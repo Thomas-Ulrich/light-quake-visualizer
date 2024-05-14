@@ -481,7 +481,7 @@ def main():
             basename = args.output_prefix[0]
         else:
             mod_prefix = os.path.splitext(fname)[0].replace("/", "_")
-            svar = args.variable[0].replace(";", "_")
+            svar = args.variables[0].replace(";", "_")
             view_name, view_ext = os.path.splitext(os.path.basename(args.view[0]))
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
