@@ -14,33 +14,33 @@ pv.global_theme.nan_color = "white"
 
 
 class seissolxdmfExtended(seissolxdmf.seissolxdmf):
-    def ComputeTimeIndices(self, at_time):
+    def ComputeTimeIndices(self, at_times):
         """retrive list of time index in file"""
-        outputTimes = np.array(super().ReadTimes())
-        idsOutputTimes = list(range(0, len(outputTimes)))
-        lidt = []
-        for oTime in at_time:
-            if not oTime.startswith("i"):
-                idsClose = np.where(np.isclose(outputTimes, float(oTime), atol=0.0001))
-                if not len(idsClose[0]):
-                    print(f"t={oTime} not found in {super().xdmfFilename}")
+        output_times = np.array(super().ReadTimes())
+        output_time_indices = list(range(0, len(output_times)))
+        time_indices = set()
+        for at_time in at_times:
+            if not at_time.startswith("i"):
+                close_indices = np.where(np.isclose(output_times, float(at_time), atol=0.0001))[0]
+                if close_indices.size > 0:
+                    time_indices.add(close_indices[0])
                 else:
-                    lidt.append(idsClose[0][0])
+                    print(f"Time {at_time} not found in {self.xdmfFilename}")
             else:
-                sslice = oTime[1:]
-                if ":" in sslice or sslice == "-1":
+                sslice = at_time[1:]
+                if ":" in sslice or int(sslice) < 0:
                     parts = sslice.split(":")
-                    startstopstep = [None for i in range(3)]
+                    start_stop_step = [None for i in range(3)]
                     for i, part in enumerate(parts):
-                        startstopstep[i] = int(part) if part else None
-                    lidt.extend(
-                        idsOutputTimes[
-                            startstopstep[0] : startstopstep[1] : startstopstep[2]
+                        start_stop_step[i] = int(part) if part else None
+                    time_indices.update(
+                        output_time_indices[
+                            start_stop_step[0] : start_stop_step[1] : start_stop_step[2]
                         ]
                     )
                 else:
-                    lidt.append(int(sslice))
-        return sorted(list(set(lidt)))
+                    time_indices.add(int(sslice))
+        return sorted(list(set(time_indices)))
 
     def ReadData(self, dataName, idt=-1):
         if dataName == "SR" and "SR" not in super().ReadAvailableDataFields():
@@ -490,15 +490,15 @@ def main():
 
     sx = seissolxdmfExtended(fnames[0])
     time_indices = sx.ComputeTimeIndices(args.time[0].split(";"))
-    outputTimes = sx.ReadTimes()
+    output_times = sx.ReadTimes()
     filtered_list = []
-    nOutputTimes = len(outputTimes)
+    n_output_times = len(output_times)
     for x in time_indices:
-        if -nOutputTimes <= x < nOutputTimes:
+        if -n_output_times <= x < n_output_times:
             filtered_list.append(x)
         else:
             print(f"Warning: time index {x} removed as out of range.")
-    times = [outputTimes[k] for k in filtered_list]
+    times = [output_times[k] for k in filtered_list]
     if not len(times):
         raise ValueError("all time index given are invalid")
     print(f"snapshots will be generated at times: {times}")
