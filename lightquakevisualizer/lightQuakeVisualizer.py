@@ -14,8 +14,16 @@ pv.global_theme.nan_color = "white"
 
 
 class seissolxdmfExtended(seissolxdmf.seissolxdmf):
-    def ComputeTimeIndices(self, at_times):
-        """retrive list of time index in file"""
+    def ComputeTimeIndices(self, at_times: list[str]) -> list[int]:
+        """Retrieve list of time indices in file that match the given string.
+
+        Args:
+            at_times: List of times to search for in the file. Times can be specified as floats or as indices
+                prefixed with "i" (e.g. "i10" for the 10th time step).
+
+        Returns:
+            List of time indices that match the given times.
+        """
         output_times = np.array(super().ReadTimes())
         output_time_indices = list(range(0, len(output_times)))
         time_indices = set()
@@ -40,14 +48,28 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
                     )
                 else:
                     time_indices.add(int(sslice))
-        return sorted(list(set(time_indices)))
+        return sorted(list(time_indices))
 
-    def ReadData(self, dataName, idt=-1):
-        if dataName == "SR" and "SR" not in super().ReadAvailableDataFields():
+    def ReadData(self, data_name: str, idt: int = -1) -> np.ndarray:
+        """Read data from a seissol file and may compute and return a derived quantity
+
+        Args:
+            data_name: Name of the data field to read.
+            idt: Time index to read data from. Defaults to -1, which reads from the last time step.
+
+        Returns:
+            Numpy array containing the read data.
+
+        Notes:
+            If the data field is not available, this method may compute and return a derived quantity.
+            For example, if "SR" is not available, it will be computed as sqrt(SRs**2 + SRd**2).
+            Similarly, if "rake" is not available, it will be computed from Sls, Sld, and ASl.
+        """
+        if data_name == "SR" and "SR" not in super().ReadAvailableDataFields():
             SRs = super().ReadData("SRs", idt)
             SRd = super().ReadData("SRd", idt)
             return np.sqrt(SRs**2 + SRd**2)
-        if dataName == "rake" and "rake" not in super().ReadAvailableDataFields():
+        if data_name == "rake" and "rake" not in super().ReadAvailableDataFields():
             Sls = super().ReadData("Sls", idt)
             Sld = super().ReadData("Sld", idt)
             ASl = super().ReadData("ASl", idt)
@@ -59,7 +81,7 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
             # print(np.nanmin(rake), np.nanmax(rake))
             return rake
         else:
-            return super().ReadData(dataName, idt)
+            return super().ReadData(data_name, idt)
 
 
 def create_vtk_grid(
