@@ -3,13 +3,23 @@ from PIL import Image
 import argparse
 import numpy as np
 
+def white_to_transparency(img: Image.Image) -> Image.Image:
+    """Convert white pixels to transparent in an image."""
+    x = np.asarray(img.convert("RGBA")).copy()
+    x[:, :, 3] = (255 * (x[:, :, :3]!= 255).any(axis=2)).astype(np.uint8)
+    return Image.fromarray(x)
+
+def compute_j0(i: int, j: int, nrows: int, ncol_per_component: int) -> int:
+    """Compute the offset for an image in the combined image."""
+    return j * ncol_per_component + i // nrows
+
 
 def main():
     parser = argparse.ArgumentParser(
         description="combine multiple images into a single image, with the ability to specify the number of columns and the relative offset (shift ratio) between images"
     )
     parser.add_argument(
-        "--inputs", nargs="+", help="filename to combine", required=True
+        "--inputs", nargs="+", help="filenames to combine", required=True
     )
     parser.add_argument(
         "--relative_offset",
@@ -38,11 +48,6 @@ def main():
 
     args = parser.parse_args()
 
-    def white_to_transparency(img):
-        x = np.asarray(img.convert("RGBA")).copy()
-        x[:, :, 3] = (255 * (x[:, :, :3] != 255).any(axis=2)).astype(np.uint8)
-        return Image.fromarray(x)
-
     if not args.keep_white:
         images = [white_to_transparency(Image.open(x)) for x in args.inputs]
     else:
@@ -57,9 +62,6 @@ def main():
     )
 
     new_im = Image.new("RGBA", (width, height))
-
-    def compute_j0(i, j, nrows, ncol_per_component):
-        return j * ncol_per_component + i // nrows
 
     nrows = int(np.ceil(len(images) / args.columns[0]))
     offset = int(heights[-1] * args.relative_offset[0])
