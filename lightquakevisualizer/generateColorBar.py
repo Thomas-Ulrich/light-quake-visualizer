@@ -8,10 +8,8 @@ from matplotlib import colormaps
 from math import log10
 import argparse
 
-# mpl.rc('font',**{'family':'sans-serif','sans-serif':['FreeSans']})
-
-
-def reverse_colourmap(cmap, name="my_cmap_r"):
+def reverse_colourmap(cmap: LinearSegmentedColormap, name: str = "my_cmap_r") -> LinearSegmentedColormap:
+    """Reverse a colormap."""
     reverse = []
     k = []
 
@@ -28,13 +26,12 @@ def reverse_colourmap(cmap, name="my_cmap_r"):
     my_cmap_r = mpl.colors.LinearSegmentedColormap(name, LinearL)
     return my_cmap_r
 
-
-def CreateDicFromJson(fname):
+def CreateDicFromJson(fname: str) -> dict:
+    """Create a dictionary from a JSON file."""
     import json
 
-    fid = open(fname)
-    datastore = json.load(fid)[0]
-    # ['RGBPoints']
+    with open(fname) as fid:
+        datastore = json.load(fid)[0]
     RGB = np.array(datastore["RGBPoints"])
     nd = len(RGB)
     RGB = RGB.reshape(nd // 4, 4)
