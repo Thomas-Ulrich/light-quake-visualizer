@@ -29,7 +29,9 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
         time_indices = set()
         for at_time in at_times:
             if not at_time.startswith("i"):
-                close_indices = np.where(np.isclose(output_times, float(at_time), atol=0.0001))[0]
+                close_indices = np.where(
+                    np.isclose(output_times, float(at_time), atol=0.0001)
+                )[0]
                 if close_indices.size > 0:
                     time_indices.add(close_indices[0])
                 else:
@@ -110,7 +112,6 @@ def create_vtk_grid(
     connect2[:, 0] = ndim2
     connect2[:, 1:] = connect
     cells.SetCells(n_elements, numpy_support.numpy_to_vtkIdTypeArray(connect2))
-
     if ndim2 == 3:
         grid.SetPolys(cells)
     else:
@@ -586,7 +587,12 @@ def main():
 
             if not args.scalar_bar:
                 plotter.remove_scalar_bar()
-            if (not args.hide_boundary_edges) and ("surface" not in fname):
+            is_surface = type(grid) == vtk.vtkPolyData
+            if (
+                (not args.hide_boundary_edges)
+                and ("surface" not in fname)
+                and is_surface
+            ):
                 edges = mesh.extract_feature_edges(
                     boundary_edges=True,
                     feature_edges=False,
