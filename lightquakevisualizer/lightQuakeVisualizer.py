@@ -432,6 +432,18 @@ def main():
     )
 
     parser.add_argument(
+        "--slice",
+        nargs=2,
+        metavar=(
+            "1st argument: slice plane defined by point and normal"
+            "(x,y,z,nx,ny,nz), example 0 0 -2000 0 0 1"
+            "2nd argument: 1 or 0 for enabling or not slicing on "
+            "given input file separated by ';'."
+        ),
+        help="slice outputs along plane",
+    )
+
+    parser.add_argument(
         "--time",
         nargs=1,
         default=["i-1"],
@@ -545,6 +557,16 @@ def main():
             vtkArray.SetName(var)
             grid.GetCellData().SetScalars(vtkArray)
             mesh = pv.wrap(grid)
+
+            if args.slice:
+                args_slice = [float(v) for v in args.slice[0].split()]
+                enabled_slice = [int(v) for v in args.slice[1].split(";")]
+                if enabled_slice[i]:
+                    assert len(args_slice) == 6
+                    px, py, pz, nx, ny, nz = args_slice
+                    mesh = mesh.slice(normal=(nx, ny, nz), origin=(px, py, pz))
+                    assert mesh.n_points > 0
+
             clim_dic = color_ranges[i] if args.color_ranges else {"clim": None}
 
             if args.scalar_bar:
@@ -599,7 +621,8 @@ def main():
                     manifold_edges=False,
                     non_manifold_edges=False,
                 )
-                plotter.add_mesh(edges, color="k", line_width=2)
+                if edges.n_points > 0:
+                    plotter.add_mesh(edges, color="k", line_width=2)
 
         configure_camera(plotter, mesh, args.view[0])
         if args.vtk_meshes:

@@ -3,11 +3,13 @@ from PIL import Image
 import argparse
 import numpy as np
 
+
 def white_to_transparency(img: Image.Image) -> Image.Image:
     """Convert white pixels to transparent in an image."""
     x = np.asarray(img.convert("RGBA")).copy()
-    x[:, :, 3] = (255 * (x[:, :, :3]!= 255).any(axis=2)).astype(np.uint8)
+    x[:, :, 3] = (255 * (x[:, :, :3] != 255).any(axis=2)).astype(np.uint8)
     return Image.fromarray(x)
+
 
 def compute_j0(i: int, j: int, nrows: int, ncol_per_component: int) -> int:
     """Compute the offset for an image in the combined image."""
