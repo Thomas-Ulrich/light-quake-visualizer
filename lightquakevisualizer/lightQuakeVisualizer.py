@@ -523,9 +523,16 @@ def main():
             basename = f"{mod_prefix}{spvcc}{svar}_{mytime}"
         return f"output/{basename}.png"
 
-    sx = seissolxdmfExtended(fnames[0])
-    time_indices = sx.ComputeTimeIndices(args.time[0].split(";"))
-    output_times = sx.ReadTimes()
+    if fnames[0].endswith("xdmf"):
+        sx = seissolxdmfExtended(fnames[0])
+        time_indices = sx.ComputeTimeIndices(args.time[0].split(";"))
+        output_times = sx.ReadTimes()
+    elif fname.endswith("hdf"):
+        print("reading a hdf file, no time information available")
+        time_indices = [0]
+        output_times = [0]
+    else:
+        raise NotImplementedError("only supported files are xdmf and hdf")
     filtered_list = []
     n_output_times = len(output_times)
     for x in time_indices:
@@ -541,21 +548,29 @@ def main():
     def generate_snap(mytime):
         plotter = pv.Plotter(off_screen=not args.interactive, **dic_window_size)
         for i, fname in enumerate(fnames):
-            sx = seissolxdmfExtended(fname)
-            xyz = sx.ReadGeometry()
-            connect = sx.ReadConnect()
-            grid = create_vtk_grid(xyz, connect)
             var = variables[i]
-            idx = sx.ComputeTimeIndices([str(mytime)])
-            if len(idx) == 0:
-                print(f"no output at t={mytime}s found for {fname}, skipping...")
-                continue
-            myData = sx.ReadData(var, idx[0])
-            vtkArray = numpy_support.numpy_to_vtk(
-                num_array=myData, deep=True, array_type=vtk.VTK_FLOAT
-            )
-            vtkArray.SetName(var)
-            grid.GetCellData().SetScalars(vtkArray)
+            if fname.endswith("xdmf"):
+                sx = seissolxdmfExtended(fname)
+                xyz = sx.ReadGeometry()
+                connect = sx.ReadConnect()
+                grid = create_vtk_grid(xyz, connect)
+                idx = sx.ComputeTimeIndices([str(mytime)])
+                if len(idx) == 0:
+                    print(f"no output at t={mytime}s found for {fname}, skipping...")
+                    continue
+                myData = sx.ReadData(var, idx[0])
+                vtkArray = numpy_support.numpy_to_vtk(
+                    num_array=myData, deep=True, array_type=vtk.VTK_FLOAT
+                )
+                vtkArray.SetName(var)
+                grid.GetCellData().SetScalars(vtkArray)
+            elif fname.endswith("hdf"):
+                reader = vtk.vtkHDFReader()
+                reader.SetFileName(fname)
+                reader.Update()
+                grid = reader.GetOutputDataObject(0)
+            else:
+                raise NotImplementedError("only supported files are xdmf and hdf")
             mesh = pv.wrap(grid)
 
             if args.slice:
