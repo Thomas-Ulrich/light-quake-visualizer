@@ -527,7 +527,7 @@ def main():
         sx = seissolxdmfExtended(fnames[0])
         time_indices = sx.ComputeTimeIndices(args.time[0].split(";"))
         output_times = sx.ReadTimes()
-    elif fname.endswith("hdf"):
+    elif fnames[0].endswith("hdf"):
         print("reading a hdf file, no time information available")
         time_indices = [0]
         output_times = [0]
