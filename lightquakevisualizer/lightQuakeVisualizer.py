@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import os
 import importlib
+import h5py
 
 pv.global_theme.nan_color = "white"
 
@@ -529,8 +530,9 @@ def main():
         output_times = sx.ReadTimes()
     elif fnames[0].endswith("hdf"):
         print("reading a hdf file, no time information available")
+        with h5py.File(fnames[0], "r") as f:
+            output_times = f["VTKHDF/FieldData/Time"][()]
         time_indices = [0]
-        output_times = [0]
     else:
         raise NotImplementedError("only supported files are xdmf and hdf")
     filtered_list = []
