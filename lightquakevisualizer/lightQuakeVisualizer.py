@@ -311,11 +311,15 @@ def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> N
             plotter.view_yz()
         case "normal":
             center = mesh.center
-            plane_normal = mesh.compute_normals()["Normals"].mean(axis=0)
-            if plane_normal[2] < 0:
-                plane_normal = -plane_normal
-            plotter.camera.focal_point = center
-            plotter.camera.position = center + plane_normal
+            try:
+                plane_normal = mesh.compute_normals()["Normals"].mean(axis=0)
+                if plane_normal[2] < 0:
+                    plane_normal = -plane_normal
+                plotter.camera.focal_point = center
+                plotter.camera.position = center + plane_normal
+            except AttributeError:
+                print("cannot compute normal, using xy view instead")
+                plotter.view_xy()
         case _:
             if is_pvcc:
                 plotter.camera = pv.Camera.from_paraview_pvcc(view_arg)
@@ -344,13 +348,6 @@ def main():
         nargs=1,
         metavar="color xr yr",
         help="Display the time on the plot (xr and yr are relative location of the text)",
-    )
-
-    parser.add_argument(
-        "--vtk_meshes",
-        nargs=1,
-        metavar="fname color linewidth",
-        help="Plot VTK meshes (e.g. coastline), group of 3 arguments separated by ';'",
     )
 
     parser.add_argument(
@@ -418,14 +415,6 @@ def main():
     )
 
     parser.add_argument(
-        "--view",
-        nargs=1,
-        default=["normal"],
-        metavar="pvcc_file_or_specific_view",
-        help="Setup the camera view: e.g. normal, xy, xz, yz or path to a pvcc_file",
-    )
-
-    parser.add_argument(
         "--scalar_bar",
         nargs=1,
         metavar="xr yr (height_pxl)",
@@ -462,6 +451,21 @@ def main():
         nargs=1,
         help="Variable(s) to visualize, separated by ';'",
         required=True,
+    )
+
+    parser.add_argument(
+        "--view",
+        nargs=1,
+        default=["normal"],
+        metavar="pvcc_file_or_specific_view",
+        help="Setup the camera view: e.g. normal, xy, xz, yz or path to a pvcc_file",
+    )
+
+    parser.add_argument(
+        "--vtk_meshes",
+        nargs=1,
+        metavar="fname color linewidth",
+        help="Plot VTK meshes (e.g. coastline), group of 3 arguments separated by ';'",
     )
 
     parser.add_argument(
@@ -581,7 +585,11 @@ def main():
                 if enabled_slice[i]:
                     assert len(args_slice) == 6
                     px, py, pz, nx, ny, nz = args_slice
-                    mesh = mesh.slice(normal=(nx, ny, nz), origin=(px, py, pz))
+                    mesh = mesh.slice(
+                        normal=(nx, ny, nz),
+                        origin=(px, py, pz),
+                        generate_triangles=True,
+                    )
                     assert mesh.n_points > 0
 
             clim_dic = color_ranges[i] if args.color_ranges else {"clim": None}
