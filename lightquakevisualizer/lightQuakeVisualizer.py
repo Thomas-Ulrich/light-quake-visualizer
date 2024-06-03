@@ -405,6 +405,12 @@ def main():
     )
 
     parser.add_argument(
+        "--log_scale",
+        nargs=1,
+        help="Log color scale. 1: log scale, 0: linear scale. n values separated by ';'",
+    )
+
+    parser.add_argument(
         "--opacity",
         nargs=1,
         help="Opacity values, separated by ';'",
@@ -490,6 +496,14 @@ def main():
     variables = args.variables[0].split(";")
     cmap_names = args.cmap[0].split(";")
     nfiles = len(fnames)
+
+    use_log_scale = (
+        [True if int(v) else False for v in args.log_scale[0].split(";")]
+        if args.log_scale
+        else np.zeros(nfiles, dtype=bool)
+    )
+    assert len(use_log_scale) == nfiles
+
     opacity = (
         [float(v) for v in args.opacity[0].split(";")]
         if args.opacity
@@ -624,6 +638,7 @@ def main():
                 cmap=cmaps[i],
                 scalars=var,
                 **lighting,
+                log_scale=use_log_scale[i],
                 opacity=opacity[i],
                 **clim_dic,
                 **scalar_bar_dic,
