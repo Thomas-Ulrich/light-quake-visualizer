@@ -10,6 +10,7 @@ import matplotlib.colors as mcolors
 import os
 import importlib
 import h5py
+from typing import List
 
 pv.global_theme.nan_color = "white"
 
@@ -68,11 +69,12 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
             For example, if "SR" is not available, it will be computed as sqrt(SRs**2 + SRd**2).
             Similarly, if "rake" is not available, it will be computed from Sls, Sld, and ASl.
         """
-        if data_name == "SR" and "SR" not in super().ReadAvailableDataFields():
+        available_datasets = super().ReadAvailableDataFields()
+        if data_name == "SR" and "SR" not in available_datasets:
             SRs = super().ReadData("SRs", idt)
             SRd = super().ReadData("SRd", idt)
             return np.sqrt(SRs**2 + SRd**2)
-        if data_name == "rake" and "rake" not in super().ReadAvailableDataFields():
+        if data_name == "rake" and "rake" not in available_datasets:
             Sls = super().ReadData("Sls", idt)
             Sld = super().ReadData("Sld", idt)
             ASl = super().ReadData("ASl", idt)
@@ -333,6 +335,27 @@ def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> N
         plotter.camera.focal_point = fp
 
 
+def validate_parameter_count(
+    parameter_list: List, parameter_description: str, expected_number: int
+) -> None:
+    """
+    Verify that the number of parameters matches the expected count.
+
+    Parameters:
+    parameter_list (list): List of parameters to be checked.
+    parameter_description (str): Description of the parameter type for error message formatting.
+    expected_number (int): The expected number of parameters.
+
+    Raises:
+    ValueError: If the number of parameters does not match the expected count.
+    """
+    n_param = len(parameter_list)
+    if n_param != expected_number:
+        raise ValueError(
+            f"{n_param} {parameter_description} given ({parameter_list}), but {expected_number} expected"
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Visualize SeisSol output using pyvista"
@@ -493,23 +516,27 @@ def main():
         os.makedirs("output")
 
     fnames = args.input_files.split(";")
-    variables = args.variables[0].split(";")
-    cmap_names = args.cmap[0].split(";")
     nfiles = len(fnames)
+
+    variables = args.variables[0].split(";")
+    validate_parameter_count(variables, "variables", nfiles)
+
+    cmap_names = args.cmap[0].split(";")
+    validate_parameter_count(cmap_names, "cmaps", nfiles)
 
     use_log_scale = (
         [True if int(v) else False for v in args.log_scale[0].split(";")]
         if args.log_scale
         else np.zeros(nfiles, dtype=bool)
     )
-    assert len(use_log_scale) == nfiles
+    validate_parameter_count(use_log_scale, "parameters in args.log_scale", nfiles)
 
     opacity = (
         [float(v) for v in args.opacity[0].split(";")]
         if args.opacity
         else np.ones(nfiles)
     )
-    assert len(opacity) == nfiles
+    validate_parameter_count(opacity, "parameters in args.opacity", nfiles)
 
     def gen_color_range(scolor_ranges):
         color_ranges_pairs = scolor_ranges[0].split(";")
