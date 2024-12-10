@@ -557,7 +557,7 @@ def main():
 
     cmaps = get_cmaps_objects(cmap_names)
 
-    def get_snapshot_fname(args, fname, mytime):
+    def get_snapshot_fname(args, fname, time):
         if args.output_prefix:
             basename = args.output_prefix[0]
         else:
@@ -566,7 +566,7 @@ def main():
             view_name, view_ext = os.path.splitext(os.path.basename(args.view[0]))
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
-            basename = f"{mod_prefix}{spvcc}{svar}_{mytime}"
+            basename = f"{mod_prefix}{spvcc}{svar}_{time}"
         return f"output/{basename}.png"
 
     if fnames[0].endswith("xdmf"):
@@ -592,7 +592,7 @@ def main():
         raise ValueError("all time index given are invalid")
     print(f"snapshots will be generated at times: {times}")
 
-    def generate_snap(mytime):
+    def generate_snap(itime, mytime):
         plotter = pv.Plotter(off_screen=not args.interactive, **dic_window_size)
         for i, fname in enumerate(fnames):
             var = variables[i]
@@ -691,13 +691,13 @@ def main():
                 if edges.n_points > 0:
                     plotter.add_mesh(edges, color="k", line_width=2)
 
-        configure_camera(plotter, mesh, args.view[0])
         if args.vtk_meshes:
             list_vtk_mesh_args = args.vtk_meshes[0].split(";")
             for vtk_mesh_args in list_vtk_mesh_args:
                 fname, color, line_width = vtk_mesh_args.split()
                 vtk_mesh = pv.read(fname)
                 plotter.add_mesh(vtk_mesh, color=color, line_width=int(line_width))
+        configure_camera(plotter, mesh, args.view[0])
 
         if args.zoom:
             plotter.camera.zoom(args.zoom[0])
@@ -717,14 +717,14 @@ def main():
         if args.interactive:
             plotter.show()
         else:
-            out_fname = get_snapshot_fname(args, fname, mytime)
+            out_fname = get_snapshot_fname(args, fname, itime)
             plotter.screenshot(out_fname)
             print(f"done writing {out_fname}")
         plotter.close()
         plotter.deep_clean()
 
-    for mytime in times:
-        generate_snap(mytime)
+    for itime, mytime in enumerate(times):
+        generate_snap(itime, mytime)
 
 
 if __name__ == "__main__":
