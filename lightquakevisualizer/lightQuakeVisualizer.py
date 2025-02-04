@@ -91,7 +91,7 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
             T0 = np.sqrt(Ts0**2 + Td0**2) 
             Pn0 = super().ReadData("Pn0", idt)
             Mus = super().ReadData("Mud", 0)
-            return np.abs(T0)/(np.multiply(np.abs(Pn0),Mus))
+            return T0/(np.multiply(np.abs(Pn0),Mus))
         else:
             return super().ReadData(data_name, idt)
 
