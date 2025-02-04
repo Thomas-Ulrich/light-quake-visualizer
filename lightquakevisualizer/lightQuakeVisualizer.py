@@ -87,9 +87,11 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
             return rake
         if data_name == "SCU" and "SCU" not in super().ReadAvailableDataFields():
             Td0 = super().ReadData("Td0", idt)
+            Ts0 = super().ReadData("Ts0", idt)
+            T0 = np.sqrt(Ts0**2 + Td0**2) 
             Pn0 = super().ReadData("Pn0", idt)
             Mus = super().ReadData("Mud", 0)
-            return np.abs(Td0)/(np.multiply(np.abs(Pn0),Mus))
+            return np.abs(T0)/(np.multiply(np.abs(Pn0),Mus))
         else:
             return super().ReadData(data_name, idt)
 
