@@ -85,6 +85,11 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
                 rake[rake < 0] += 360
             # print(np.nanmin(rake), np.nanmax(rake))
             return rake
+        if data_name == "SCU" and "SCU" not in super().ReadAvailableDataFields():
+            Td0 = super().ReadData("Td0", idt)
+            Pn0 = super().ReadData("Pn0", idt)
+            Mus = super().ReadData("Mud", 0)
+            return np.abs(Td0)/(np.multiply(np.abs(Pn0),Mus))
         else:
             return super().ReadData(data_name, idt)
 
