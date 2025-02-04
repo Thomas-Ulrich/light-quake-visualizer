@@ -650,6 +650,15 @@ def main():
                 width = 40 / args.window_size[0]
                 # shift successive scalar bars
                 xr += 2 * width * i
+
+                def get_scalar_bar_title(var):
+                    if var == "SR":
+                        return "slip rate (m/s)"
+                    elif var == "ASl":
+                        return "fault slip (m)"
+                    else:
+                        return var
+
                 scalar_bar_dic = {
                     "scalar_bar_args": dict(
                         width=width,
@@ -661,7 +670,7 @@ def main():
                         title_font_size=int(1.8 * args.font_size[0]),
                         n_labels=3,
                         fmt="%g",
-                        title=var if var != "SR" else "slip rate (m/s)",
+                        title=get_scalar_bar_title(var),
                     )
                 }
             else:
