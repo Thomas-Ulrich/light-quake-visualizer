@@ -126,6 +126,9 @@ def main():
         action="store_true",
         help="log format (nticks does not apply)",
     )
+    parser.add_argument(
+        "--output", nargs=1, help="if not set will be ./", required=False
+    )
     args = parser.parse_args()
 
     if (args.drange[1] - args.drange[0]) > 0:
@@ -204,11 +207,15 @@ def main():
     # pl.show()
     if args.log:
         args.crange[1] = log10(args.crange[1])
-    fn = f"colorbar{args.cmap}{args.crange[1]:.1f}.{args.extension[0]}"
 
+    if args.output:
+        output_folder = args.output[0]  # Use the provided output folder
+    else:
+        output_folder = '.'  # Use the current directory as default
+
+    fn = f"{output_folder}/colorbar{args.cmap}{args.crange[1]:.1f}.{args.extension[0]}"
     plt.savefig(fn, transparent=True)
     print(f"done writing {fn}")
-
 
 if __name__ == "__main__":
     main()

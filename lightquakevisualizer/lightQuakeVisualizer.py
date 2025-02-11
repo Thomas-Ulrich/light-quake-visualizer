@@ -381,6 +381,14 @@ def main():
     )
 
     parser.add_argument(
+        "--annotate_text", 
+        type=str,
+        nargs=1,
+        metavar="color xr yr text",
+        help="Display custom annotation on the plot (xr and yr are relative location of the text)."
+    )
+
+    parser.add_argument(
         "--color_ranges",
         nargs=1,
         help="Color range for each file, separated by ';'",
@@ -720,6 +728,29 @@ def main():
                 color=colname,
                 font_size=args.font_size[0],
             )
+        
+        if args.annotate_text:
+            try:
+                annot_str = args.annotate_text[0]
+                # Split the string by spaces but limit the number of splits to 3
+                parts = annot_str.split(" ", 3)
+                
+                if len(parts) < 4:
+                    raise ValueError("Invalid format. Expected 'color x y text'.")
+
+                colname, xr, yr, text_part = parts[0], parts[1], parts[2], parts[3]
+                x1 = float(xr) * args.window_size[0]
+                y1 = float(yr) * args.window_size[1]
+
+                # Add the text to the plot
+                plotter.add_text(
+                    text_part.replace("\\n", "\n"),
+                    position=(x1, y1),
+                    color=colname,
+                    font_size=args.font_size[0],
+                )
+            except ValueError as e:
+                print(f"Error: {e}")
 
         if args.interactive:
             plotter.show()
