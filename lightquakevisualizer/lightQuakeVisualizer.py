@@ -88,10 +88,10 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
         if data_name == "SCU" and "SCU" not in super().ReadAvailableDataFields():
             Td0 = super().ReadData("Td0", idt)
             Ts0 = super().ReadData("Ts0", idt)
-            T0 = np.sqrt(Ts0**2 + Td0**2) 
+            T0 = np.sqrt(Ts0**2 + Td0**2)
             Pn0 = super().ReadData("Pn0", idt)
             Mus = super().ReadData("Mud", 0)
-            return T0/(np.multiply(np.abs(Pn0),Mus))
+            return T0 / (np.multiply(np.abs(Pn0), Mus))
         else:
             return super().ReadData(data_name, idt)
 
@@ -381,11 +381,11 @@ def main():
     )
 
     parser.add_argument(
-        "--annotate_text", 
+        "--annotate_text",
         type=str,
         nargs=1,
         metavar="color xr yr text",
-        help="Display custom annotation on the plot (xr and yr are relative location of the text)."
+        help="Display custom annotation on the plot (xr and yr are relative location of the text).",
     )
 
     parser.add_argument(
@@ -728,13 +728,13 @@ def main():
                 color=colname,
                 font_size=args.font_size[0],
             )
-        
+
         if args.annotate_text:
             try:
                 annot_str = args.annotate_text[0]
                 # Split the string by spaces but limit the number of splits to 3
                 parts = annot_str.split(" ", 3)
-                
+
                 if len(parts) < 4:
                     raise ValueError("Invalid format. Expected 'color x y text'.")
 

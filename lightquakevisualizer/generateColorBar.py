@@ -211,11 +211,12 @@ def main():
     if args.output:
         output_folder = args.output[0]  # Use the provided output folder
     else:
-        output_folder = '.'  # Use the current directory as default
+        output_folder = "."  # Use the current directory as default
 
     fn = f"{output_folder}/colorbar{args.cmap}{args.crange[1]:.1f}.{args.extension[0]}"
     plt.savefig(fn, transparent=True)
     print(f"done writing {fn}")
+
 
 if __name__ == "__main__":
     main()
