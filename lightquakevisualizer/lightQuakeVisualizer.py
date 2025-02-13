@@ -88,10 +88,10 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
         if data_name == "SCU" and "SCU" not in super().ReadAvailableDataFields():
             Td0 = super().ReadData("Td0", idt)
             Ts0 = super().ReadData("Ts0", idt)
-            T0 = np.sqrt(Ts0**2 + Td0**2) 
+            T0 = np.sqrt(Ts0**2 + Td0**2)
             Pn0 = super().ReadData("Pn0", idt)
             Mus = super().ReadData("Mud", 0)
-            return T0/(np.multiply(np.abs(Pn0),Mus))
+            return T0 / (np.multiply(np.abs(Pn0), Mus))
         else:
             return super().ReadData(data_name, idt)
 
@@ -378,6 +378,17 @@ def main():
         nargs=1,
         metavar="color xr yr",
         help="Display the time on the plot (xr and yr are relative location of the text)",
+    )
+
+    parser.add_argument(
+        "--annotate_text",
+        type=str,
+        nargs=1,
+        metavar="color xr yr text",
+        help=(
+            "Display custom annotation on the plot (xr and yr are relative location of the text)."
+            "for several annotations, use multiple 'color xr yr text' separated by ';'"
+        ),
     )
 
     parser.add_argument(
@@ -729,6 +740,25 @@ def main():
                 color=colname,
                 font_size=args.font_size[0],
             )
+
+        if args.annotate_text:
+            annot_str = args.annotate_text[0].split(";")
+            for params in annot_str:
+                parts = params.split(" ", 3)
+                assert (
+                    len(parts) == 4
+                ), f"Invalid format. Expected 'color x y text', got {parts}"
+                colname, xr, yr, text_part = parts
+                x1 = float(xr) * args.window_size[0]
+                y1 = float(yr) * args.window_size[1]
+
+                # Add the text to the plot
+                plotter.add_text(
+                    text_part.replace("\\n", "\n"),
+                    position=(x1, y1),
+                    color=colname,
+                    font_size=args.font_size[0],
+                )
 
         if args.interactive:
             plotter.show()
