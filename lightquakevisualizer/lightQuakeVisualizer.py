@@ -636,17 +636,7 @@ def main():
         if args.output_prefix:
             basename = args.output_prefix[0].replace("%d", f"_{itime}")
             if "{t" in basename:
-                try:
-                    basename = basename.format(
-                        t=float(time_value)
-                    )  # convert to float if not datetime
-                except (ValueError, KeyError):
-                    # Handle formatting errors (e.g., invalid format specifier)
-                    print(
-                        f"Warning: Invalid time format in output prefix: {args.output_prefix[0]}"
-                    )
-                    # if the format fails, just remove the {t} and continue.
-                    basename = basename.replace("{t}", f"_{time_value:.2f}")
+                basename = basename.format(t=float(time_value))
 
         else:
             mod_prefix = os.path.splitext(fname)[0].replace("/", "_")
