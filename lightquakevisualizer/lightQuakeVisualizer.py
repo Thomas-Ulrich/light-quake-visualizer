@@ -509,7 +509,13 @@ def main():
     )
 
     parser.add_argument(
-        "--output_prefix", nargs=1, help="Specify output prefix of the snapshot"
+        "--output_prefix",
+        nargs=1,
+        help=(
+            "Specify output prefix of the snapshot",
+            "%d will be replaced by the time index",
+            "{t:.2f} will be replaced by the time_value in the given format specifier",
+        ),
     )
 
     parser.add_argument(
@@ -626,16 +632,19 @@ def main():
 
     cmaps = get_cmaps_objects(cmap_names)
 
-    def get_snapshot_fname(args, fname, time):
+    def get_snapshot_fname(args, fname, itime, time_value):
         if args.output_prefix:
-            basename = args.output_prefix[0]
+            basename = args.output_prefix[0].replace("%d", f"_{itime}")
+            if "{t" in basename:
+                basename = basename.format(t=float(time_value))
+
         else:
             mod_prefix = os.path.splitext(fname)[0].replace("/", "_")
             svar = args.variables[0].replace(";", "_")
             view_name, view_ext = os.path.splitext(os.path.basename(args.view[0]))
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
-            basename = f"{mod_prefix}{spvcc}{svar}_{time}"
+            basename = f"{mod_prefix}{spvcc}{svar}_{itime}"
         return f"output/{basename}.png"
 
     if fnames[0].endswith("xdmf"):
@@ -814,7 +823,7 @@ def main():
         if args.interactive:
             plotter.show()
         else:
-            out_fname = get_snapshot_fname(args, fname, itime)
+            out_fname = get_snapshot_fname(args, fname, itime, mytime)
             plotter.screenshot(out_fname)
             print(f"done writing {out_fname}")
         plotter.close()
