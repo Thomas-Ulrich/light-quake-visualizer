@@ -16,7 +16,6 @@ For more information on available options and their descriptions, run:
 light_quake_visualizer --help
 ```
 
-
 ## A simple example of use
 
 Plot the volume output file at time 10s, variable u with a pvcc (saved from ParaView):
@@ -31,6 +30,13 @@ Here sliced volume output (variable u), and (unsliced) fault output (variable AS
 
 ```
 light_quake_visualizer  "output_tpv5_ref/tpv5_sym.xdmf;output_tpv5_ref/tpv5_sym-fault.xdmf" --var "u;ASl" --time 10.0 --cmap "broc;viridis" --view output_tpv5_ref/tpv5.pvcc  --scalar_bar "0.8 0.1" --color_range "-0.5 0.5;0 5" --zoom 1.0 --light 0.5 0.5 0.5 --slice "0 0 -2000 0 0 1" "1;0"
+```
+
+## Plotting rupture time contour lines 
+
+Here is an example of plotting fault slip (ASl) with rupture time (RT) contour lines
+```
+light_quake_visualizer --variable ASl --cmap davos_r0 --color_range "0 3.0" --contour "file_index=0 var=RT contour=grey,2,0,max,1 contour=black,4,0,max,5" --zoom 2.0 --window 1200 600 --output ASl --time "i-1" --view normal output_tpv5_ref/tpv5_sym.xdmf
 ```
 
 ## Support for the new HDF-VTK
