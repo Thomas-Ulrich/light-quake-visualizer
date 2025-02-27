@@ -226,10 +226,51 @@ def get_cmaps_objects(cmap_names: list) -> list:
     return cmaps_objects
 
 
+def parse_contour_args(args_contours: str) -> list:
+    """Parse a human-readable contours argument string into a structured format."""
+    contours_list = []
+    current_entry = {}
+
+    try:
+        for line in args_contours.split():
+            key, value = line.split("=", 1)
+
+            if key == "file_index":
+                if current_entry:  # Save previous entry before starting a new one
+                    contours_list.append(current_entry)
+                current_entry = {"file_index": int(value), "contours": []}
+
+            elif key == "var":
+                current_entry["variable"] = value
+
+            elif key == "contour":
+                color, thickness, min_val, max_val, dx = value.split(",")
+                current_entry["contours"].append(
+                    {
+                        "color": color,
+                        "line_width": float(thickness),
+                        "min": min_val if min_val == "min" else float(min_val),
+                        "max": max_val if max_val == "max" else float(max_val),
+                        "dx": float(dx),
+                    }
+                )
+
+        if current_entry:  # Add the last parsed entry
+            contours_list.append(current_entry)
+
+    except ValueError:
+        message = f"could not read args_contours:'{args_contours}', \nexample of \
+expected format:  'file_index=0 var=RT contour=grey,2,0,max,1 contour=black,4,0,max,5'\n\
+each contour entry follows the following pattern contour=color,thickness,min,max,dx"
+        raise ValueError(message)
+
+    return contours_list
+
+
 def add_contours(
     plotter: pv.Plotter,
     grid: vtk.vtkUnstructuredGrid,
-    sx: seissolxdmfExtended,
+    sx,
     i: int,
     idt: int,
     args_contours: str,
@@ -240,48 +281,49 @@ def add_contours(
     Args:
         plotter: A pyvista plotter object.
         grid: A vtk grid object.
-        sx: a seissolxdmfExtended object to read seissol data
+        sx: a seissolxdmfExtended object to read seissol data.
         i: An integer, indexing the output file.
         idt: An integer, indexing the time snapshot.
-        args_contours: A string containing contour parameters, separated by semicolons.
+        args_contours: A structured string containing contour parameters.
 
     Returns:
         None
 
     Example:
-        args_contours = "1 var1 3 red 2 0 10 1; 2 var2 2 blue 1 0 5 0.5"
-        add_contours(plotter, grid, 1, 1, args_contours)
+        args_contours = "file_index=0 var=RT contour=grey,2,0,max,1 contour=black,4,0,max,5"
+        add_contours(plotter, grid, 0, 1, args_contours)
     """
-    for contour_param in args_contours.split(";"):
-        params = contour_param.split()
-        idc, varc, number_contours = params[0:3]
-        idc, number_contours = int(idc), int(number_contours)
-        if idc != i:
+    contours_list = parse_contour_args(args_contours)
+
+    for entry in contours_list:
+        if entry["file_index"] != i:
             continue
-        error_msg = "contour params should be: id variable nb_of_cont (color thickness min max dx)*nb_of_cont"
-        assert len(params) == 5 * number_contours + 3, error_msg
+
+        varc = entry["variable"]
         myData = sx.ReadData(varc, idt)
+
         vtkArray = numpy_support.numpy_to_vtk(
             num_array=myData, deep=True, array_type=vtk.VTK_FLOAT
         )
         vtkArray.SetName(varc)
         grid.GetCellData().AddArray(vtkArray)
+
         mesh = pv.wrap(grid)
         grid.GetCellData().RemoveArray(varc)
-        print("using a threshold of 0.1 m for contour plots")
+
+        print("Using a threshold of 0.1 m for contour plots")
         mesh = mesh.threshold(value=(0.1, mesh["ASl"].max()), scalars="ASl")
         mesh = mesh.cell_data_to_point_data([varc])
 
-        for k in range(number_contours):
-            colorc = params[3 + 5 * k]
-            thickc = float(params[4 + 5 * k])
-            minc = params[5 + 5 * k]
-            minc = myData.min() if minc == "min" else float(minc)
-            maxc = params[6 + 5 * k]
-            maxc = myData.max() if maxc == "max" else float(maxc)
-            dxc = float(params[7 + 5 * k])
+        for contour in entry["contours"]:
+            colorc = contour["color"]
+            thickc = contour["line_width"]
+            minc = myData.min() if contour["min"] == "min" else float(contour["min"])
+            maxc = myData.max() if contour["max"] == "max" else float(contour["max"])
+            dxc = float(contour["dx"])
+
             print(
-                f"generating contour for {varc}: np.arange({minc}, {maxc}, {dxc}), in {colorc} with line_width {thickc}"
+                f"Generating contour for {varc}: np.arange({minc}, {maxc}, {dxc}), in {colorc} with line_width {thickc}"
             )
             contours = mesh.contour(np.arange(minc, maxc, dxc), scalars=varc)
             plotter.add_mesh(contours, color=colorc, line_width=thickc)
@@ -294,7 +336,7 @@ def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> N
     Args:
         plotter: A PyVista plotter object.
         mesh: A PyVista mesh object.
-        view_arg: A string specifying the view, either a file path to a.pvcc file or a predefined view name (xy, xz, yz, normal).
+        view_arg: A string specifying the view, either a file path to a.pvcc file or a predefined view name (xy, xz, yz, normal, normal-flip).
 
     Returns:
         None
@@ -318,12 +360,13 @@ def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> N
             plotter.view_xz()
         case "yz":
             plotter.view_yz()
-        case "normal":
+        case "normal" | "normal-flip":
             center = mesh.center
             try:
                 plane_normal = mesh.compute_normals()["Normals"].mean(axis=0)
-                if plane_normal[2] < 0:
+                if view_name == "normal-flip":
                     plane_normal = -plane_normal
+
                 plotter.camera.focal_point = center
                 plotter.camera.position = center + plane_normal
             except AttributeError:
@@ -399,12 +442,20 @@ def main():
 
     parser.add_argument(
         "--contours",
+        type=str,
         nargs=1,
         help=(
-            "3 + 5*n parameters per contour_variable, with n number of contour:"
-            "index of the file, variable, n, and for each contour "
-            "color, line_width, min, max, dx of np.arange"
-            ". Coutour parameters (group of 3 + 5n params) separated by ';'"
+            "Contour configuration in a structured format. Example:\n"
+            "'file_index=0 var=RT contour=grey,2,0,max,1 contour=black,4,0,max,5'\n\n"
+            "Each entry consists of:\n"
+            "- 'file_index=N' (index of the file)\n"
+            "- 'var=VAR_NAME' (variable to contour)\n"
+            "- 'contour=color,thickness,min,max,dx' (one per contour level)\n"
+            "  - color (e.g., grey, black)\n"
+            "  - thickness (line width)\n"
+            "  - min (min value, can be 'min' for auto)\n"
+            "  - max (max value, can be 'max' for auto)\n"
+            "  - dx (contour step size)"
         ),
     )
 
@@ -505,7 +556,7 @@ def main():
         nargs=1,
         default=["normal"],
         metavar="pvcc_file_or_specific_view",
-        help="Setup the camera view: e.g. normal, xy, xz, yz or path to a pvcc_file",
+        help="Setup the camera view: e.g. normal, normal-flip, xy, xz, yz or path to a pvcc_file",
     )
 
     parser.add_argument(
