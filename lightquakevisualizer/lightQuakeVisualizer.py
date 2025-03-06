@@ -15,6 +15,45 @@ from typing import List
 pv.global_theme.nan_color = "white"
 
 
+def compute_time_indices(output_times: list, at_times: list[str]) -> list[int]:
+    """Retrieve list of time indices in output_times that match the given string.
+
+    Args:
+        output_times: List of available time stamps
+        at_times: List of times to search for in the file. Times can be specified as floats or as indices
+            prefixed with "i" (e.g. "i10" for the 10th time step).
+
+    Returns:
+        List of time indices that match the given times.
+    """
+    output_time_indices = list(range(0, len(output_times)))
+    time_indices = set()
+    for at_time in at_times:
+        if not at_time.startswith("i"):
+            close_indices = np.where(
+                np.isclose(output_times, float(at_time), atol=0.0001)
+            )[0]
+            if close_indices.size > 0:
+                time_indices.add(close_indices[0])
+            else:
+                print(f"Time {at_time} not found in {self.xdmfFilename}")
+        else:
+            sslice = at_time[1:]
+            if ":" in sslice or int(sslice) < 0:
+                parts = sslice.split(":")
+                start_stop_step = [None for i in range(3)]
+                for i, part in enumerate(parts):
+                    start_stop_step[i] = int(part) if part else None
+                time_indices.update(
+                    output_time_indices[
+                        start_stop_step[0] : start_stop_step[1] : start_stop_step[2]
+                    ]
+                )
+            else:
+                time_indices.add(int(sslice))
+    return sorted(list(time_indices))
+
+
 class seissolxdmfExtended(seissolxdmf.seissolxdmf):
     def ComputeTimeIndices(self, at_times: list[str]) -> list[int]:
         """Retrieve list of time indices in file that match the given string.
@@ -27,32 +66,7 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
             List of time indices that match the given times.
         """
         output_times = np.array(super().ReadTimes())
-        output_time_indices = list(range(0, len(output_times)))
-        time_indices = set()
-        for at_time in at_times:
-            if not at_time.startswith("i"):
-                close_indices = np.where(
-                    np.isclose(output_times, float(at_time), atol=0.0001)
-                )[0]
-                if close_indices.size > 0:
-                    time_indices.add(close_indices[0])
-                else:
-                    print(f"Time {at_time} not found in {self.xdmfFilename}")
-            else:
-                sslice = at_time[1:]
-                if ":" in sslice or int(sslice) < 0:
-                    parts = sslice.split(":")
-                    start_stop_step = [None for i in range(3)]
-                    for i, part in enumerate(parts):
-                        start_stop_step[i] = int(part) if part else None
-                    time_indices.update(
-                        output_time_indices[
-                            start_stop_step[0] : start_stop_step[1] : start_stop_step[2]
-                        ]
-                    )
-                else:
-                    time_indices.add(int(sslice))
-        return sorted(list(time_indices))
+        return compute_time_indices(output_times, at_times)
 
     def ReadData(self, data_name: str, idt: int = -1) -> np.ndarray:
         """Read data from a seissol file and may compute and return a derived quantity
@@ -329,6 +343,30 @@ def add_contours(
             plotter.add_mesh(contours, color=colorc, line_width=thickc)
 
 
+def compute_plane_normal_surface(mesh):
+    mesh_normals = mesh.compute_normals()
+    return mesh_normals.point_data["Normals"].mean(axis=0)
+
+
+def compute_plane_normal(mesh):
+    """Computes the plane normal from a PyVista mesh, handling UnstructuredGrid without normals."""
+    # typically tandem output
+    if isinstance(mesh, pv.MultiBlock):
+        normals = []
+        for block in mesh:
+            normals.append(compute_plane_normal(block))
+        return np.mean(np.array(normals), axis=0)
+    # seissol volume output
+    elif isinstance(mesh, pv.UnstructuredGrid):
+        surface = mesh.extract_surface()
+        return compute_plane_normal_surface(surface)
+    # seissol surface output
+    elif isinstance(mesh, pv.PolyData):
+        return compute_plane_normal_surface(mesh)
+    else:
+        raise ValueError("Unsupported mesh type.")
+
+
 def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> None:
     """
     Configure the camera for a PyVista plotter based on a view argument.
@@ -363,7 +401,7 @@ def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> N
         case "normal" | "normal-flip":
             center = mesh.center
             try:
-                plane_normal = mesh.compute_normals()["Normals"].mean(axis=0)
+                plane_normal = compute_plane_normal(mesh)
                 if view_name == "normal-flip":
                     plane_normal = -plane_normal
 
@@ -656,8 +694,12 @@ def main():
         with h5py.File(fnames[0], "r") as f:
             output_times = f["VTKHDF/FieldData/Time"][()]
         time_indices = [0]
+    elif fnames[0].endswith("pvd"):
+        reader = pv.PVDReader(fnames[0])
+        output_times = np.array(reader.time_values)
+        time_indices = compute_time_indices(output_times, args.time[0].split(";"))
     else:
-        raise NotImplementedError("only supported files are xdmf and hdf")
+        raise NotImplementedError("only supported files are pvd, xdmf and hdf")
     filtered_list = []
     n_output_times = len(output_times)
     for x in time_indices:
@@ -694,8 +736,18 @@ def main():
                 reader.SetFileName(fname)
                 reader.Update()
                 grid = reader.GetOutputDataObject(0)
+            elif fname.endswith("pvd"):
+                reader = pv.PVDReader(fname)
+                time_values = reader.time_values
+                idx = compute_time_indices(output_times, [str(mytime)])
+                if len(idx) == 0:
+                    print(f"no output at t={mytime}s found for {fname}, skipping...")
+                    continue
+                reader.set_active_time_value(time_values[idx[0]])
+                grid = reader.read()
             else:
-                raise NotImplementedError("only supported files are xdmf and hdf")
+                raise NotImplementedError("only supported files are xdmf, hdf, and pvd")
+
             mesh = pv.wrap(grid)
 
             if args.slice:
