@@ -423,6 +423,44 @@ def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> N
         plotter.camera.focal_point = fp
 
 
+def format_time(t):
+    """
+    Converts time in seconds to "years y days d hours h minutes m seconds s" format.
+
+    Args:
+        t (float): Time in seconds.
+
+    Returns:
+        str: Formatted time string.
+    """
+
+    years = int(t / (60.0 * 60.0 * 24.0 * 365.25))
+    t -= years * 60.0 * 60.0 * 24.0 * 365.25
+
+    days = int(t / (60.0 * 60.0 * 24.0))
+    t -= days * 60.0 * 60.0 * 24.0
+
+    hours = int(t / (60.0 * 60.0))
+    t -= hours * 60.0 * 60.0
+
+    minutes = int(t / 60.0)
+    seconds = t - minutes * 60.0
+
+    formatted_time = ""
+    if years > 0:
+        formatted_time += f"{years}y "
+    if days > 0:
+        formatted_time += f"{days}d "
+    if hours > 0:
+        formatted_time += f"{hours}h "
+    if minutes > 0:
+        formatted_time += f"{minutes}m "
+    if seconds > 0 or not formatted_time:
+        formatted_time += f"{seconds:.1f}s"
+
+    return formatted_time
+
+
 def validate_parameter_count(
     parameter_list: List, parameter_description: str, expected_number: int
 ) -> None:
@@ -745,6 +783,22 @@ def main():
                     continue
                 reader.set_active_time_value(time_values[idx[0]])
                 grid = reader.read()
+                # compute slip-rate from slip-rate0 and slip-rate1
+                for block in grid:
+                    if (
+                        isinstance(block, pv.DataSet)
+                        and "slip-rate" == var
+                        and "slip-rate0" in block.point_data
+                        and "slip-rate1" in block.point_data
+                    ):
+                        slip_rate0 = block.point_data["slip-rate0"]
+                        slip_rate1 = block.point_data["slip-rate1"]
+                        slip_rate_magnitude = np.sqrt(slip_rate0**2 + slip_rate1**2)
+                        block["slip-rate"] = slip_rate_magnitude
+                    if var in block.point_data:
+                        block[var] = block.point_data[var]
+                    elif var in block.cell_data:
+                        block[var] = block.cell_data[var]
             else:
                 raise NotImplementedError("only supported files are xdmf, hdf, and pvd")
 
@@ -782,20 +836,19 @@ def main():
                     else:
                         return var
 
-                scalar_bar_dic = {
-                    "scalar_bar_args": dict(
-                        width=width,
-                        height=height,
-                        vertical=True,
-                        position_x=xr,
-                        position_y=yr,
-                        label_font_size=int(1.8 * args.font_size[0]),
-                        title_font_size=int(1.8 * args.font_size[0]),
-                        n_labels=3,
-                        fmt="%g",
-                        title=get_scalar_bar_title(var),
-                    )
-                }
+                scalar_bar_args = dict(
+                    width=width,
+                    height=height,
+                    vertical=True,
+                    position_x=xr,
+                    position_y=yr,
+                    label_font_size=int(1.8 * args.font_size[0]),
+                    title_font_size=int(1.8 * args.font_size[0]),
+                    n_labels=3,
+                    fmt="%.1e" if use_log_scale[i] else "%g",
+                    title=get_scalar_bar_title(var),
+                )
+                scalar_bar_dic = {"scalar_bar_args": scalar_bar_args}
             else:
                 scalar_bar_dic = {}
 
@@ -864,9 +917,14 @@ def main():
                 x1 = float(xr) * args.window_size[0]
                 y1 = float(yr) * args.window_size[1]
 
-                # Add the text to the plot
+                text_part = text_part.replace("\\n", "\n")
+                # add time if {t} in the text
+                if "{t" in text_part:
+                    formatted_time = format_time(mytime)
+                    text_part = text_part.format(t=formatted_time)
+
                 plotter.add_text(
-                    text_part.replace("\\n", "\n"),
+                    text_part,
                     position=(x1, y1),
                     color=colname,
                     font_size=args.font_size[0],
