@@ -46,6 +46,12 @@ Example usage with the new HDF-VTK format:
 light_quake_visualizer  output_tpv5_new_format/tpv5_sym-wavefield-2.hdf --var u --time "i0" --cmap broc --view output_tpv5_ref/tpv5.pvcc  --scalar_bar "0.9 0.1" --color_range "-0.5 0.5" --zoom 1.0 --lighting 0.6 0.4 0.6
 ```
 
+## Support for tandem fautl output
+
+```
+light_quake_visualizer --time "i::5" --var slip-rate --cmap turbo output/fault.pvd --view xz --log_scale 0 --scalar_bar "0.1 0.3" --annotate_text "black 0.1 0.9 {t}" --zoom 1.5 --color_range "1e-7 1e0"
+```
+
 ## Generate vector graphic color bar image
 
 Example usage:
