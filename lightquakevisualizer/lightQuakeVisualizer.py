@@ -833,6 +833,10 @@ def main():
                         return "slip rate (m/s)"
                     elif var == "ASl":
                         return "fault slip (m)"
+                    elif var == "Vr":
+                        return "rupture speed (m/s)"
+                    elif var == "PSR":
+                        return "peak slip-rate (m/s)"
                     else:
                         return var
 
