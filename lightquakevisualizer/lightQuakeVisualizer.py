@@ -97,6 +97,13 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
             Td0 = super().ReadData("T_d", idt)
             Ts0 = super().ReadData("T_s", idt)
             return np.sqrt(Ts0**2 + Td0**2) / 1e6
+        if (
+            data_name == "shear_stress0_MPa"
+            and "shear_stress0_MPa" not in available_datasets
+        ):
+            Td0 = super().ReadData("Td0", idt)
+            Ts0 = super().ReadData("Ts0", idt)
+            return np.sqrt(Ts0**2 + Td0**2) / 1e6
         if data_name == "rake" and "rake" not in available_datasets:
             Sls = super().ReadData("Sls", idt)
             Sld = super().ReadData("Sld", idt)
@@ -852,7 +859,7 @@ def main():
                         return "static friction"
                     elif var == "d_c":
                         return "slip weakening distance (m)"
-                    elif var == "shear_stress_MPa":
+                    elif var in ["shear_stress_MPa", "shear_stress0_MPa"]:
                         return "shear stress (MPa)"
                     else:
                         return var
