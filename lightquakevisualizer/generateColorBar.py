@@ -2,11 +2,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.colors as colors
 from matplotlib import colormaps
 from math import log10
 import argparse
+from importlib.metadata import version
 
 
 def reverse_colourmap(
@@ -62,27 +63,12 @@ def main():
     )
     parser.add_argument("cmap", help="colormap name (e.g. magma_r)")
     parser.add_argument(
-        "--labelfontsize",
-        nargs=1,
-        metavar=("labelfontsize"),
-        default=[25],
-        help="font size label",
+        "--crange",
+        nargs=2,
+        metavar=("cmin", "cmax"),
+        default=([0, 1]),
+        help="color range",
         type=float,
-    )
-    parser.add_argument(
-        "--nticks",
-        nargs=1,
-        metavar=("nticks"),
-        default=[5],
-        help="number of ticks",
-        type=int,
-    )
-    parser.add_argument(
-        "--extension",
-        nargs=1,
-        metavar=("ext"),
-        default=(["svg"]),
-        help="extension of output file",
     )
     parser.add_argument(
         "--drange",
@@ -93,12 +79,11 @@ def main():
         type=float,
     )
     parser.add_argument(
-        "--crange",
-        nargs=2,
-        metavar=("cmin", "cmax"),
-        default=([0, 1]),
-        help="color range",
-        type=float,
+        "--extension",
+        nargs=1,
+        metavar=("ext"),
+        default=(["svg"]),
+        help="extension of output file",
     )
     parser.add_argument(
         "--heightAR",
@@ -109,16 +94,18 @@ def main():
         type=float,
     )
     parser.add_argument(
-        "--noMinor", dest="noMinor", action="store_true", help="do not show minor ticks"
-    )
-    parser.add_argument(
         "--horizontal",
         dest="horizontal",
         action="store_true",
         help="plot horizontal colorbar",
     )
     parser.add_argument(
-        "--reverse", dest="reverse", action="store_true", help="reverse color map"
+        "--labelfontsize",
+        nargs=1,
+        metavar=("labelfontsize"),
+        default=[25],
+        help="font size label",
+        type=float,
     )
     parser.add_argument(
         "--log",
@@ -127,7 +114,24 @@ def main():
         help="log format (nticks does not apply)",
     )
     parser.add_argument(
+        "--noMinor", dest="noMinor", action="store_true", help="do not show minor ticks"
+    )
+    parser.add_argument(
+        "--nticks",
+        nargs=1,
+        metavar=("nticks"),
+        default=[5],
+        help="number of ticks",
+        type=int,
+    )
+    parser.add_argument(
         "--output", nargs=1, help="if not set will be ./", required=False
+    )
+    parser.add_argument(
+        "--reverse", dest="reverse", action="store_true", help="reverse color map"
+    )
+    parser.add_argument(
+        "--version", action="version", version=f'{version("lightquakevisualizer")}'
     )
     args = parser.parse_args()
 
@@ -169,9 +173,9 @@ def main():
         print("reverse works only with json color maps")
 
     if args.log:
-        img = plt.imshow(a, cmap=custom, norm=colors.LogNorm())
+        plt.imshow(a, cmap=custom, norm=colors.LogNorm())
     else:
-        img = plt.imshow(a, cmap=custom)
+        plt.imshow(a, cmap=custom)
 
     plt.gca().set_visible(False)
 

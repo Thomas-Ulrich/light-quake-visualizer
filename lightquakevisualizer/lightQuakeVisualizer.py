@@ -11,6 +11,7 @@ import os
 import importlib
 import h5py
 from typing import List
+from importlib.metadata import version
 
 pv.global_theme.nan_color = "white"
 
@@ -19,9 +20,10 @@ def compute_time_indices(output_times: list, at_times: list[str]) -> list[int]:
     """Retrieve list of time indices in output_times that match the given string.
 
     Args:
-        output_times: List of available time stamps
-        at_times: List of times to search for in the file. Times can be specified as floats or as indices
-            prefixed with "i" (e.g. "i10" for the 10th time step).
+        output_times: List of available time stamps.
+        at_times: List of times to search for in the file. Times can be specified
+            as floats or as indices prefixed with "i" (e.g. "i10" for the 10th time
+            step).
 
     Returns:
         List of time indices that match the given times.
@@ -36,7 +38,7 @@ def compute_time_indices(output_times: list, at_times: list[str]) -> list[int]:
             if close_indices.size > 0:
                 time_indices.add(close_indices[0])
             else:
-                print(f"Time {at_time} not found in {self.xdmfFilename}")
+                print(f"Time {at_time} not found")
         else:
             sslice = at_time[1:]
             if ":" in sslice or int(sslice) < 0:
@@ -59,8 +61,9 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
         """Retrieve list of time indices in file that match the given string.
 
         Args:
-            at_times: List of times to search for in the file. Times can be specified as floats or as indices
-                prefixed with "i" (e.g. "i10" for the 10th time step).
+            at_times: List of times to search for in the file. Times can be specified
+                as floats or as indices prefixed with "i" (e.g. "i10" for the 10th
+                time step).
 
         Returns:
             List of time indices that match the given times.
@@ -69,19 +72,21 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
         return compute_time_indices(output_times, at_times)
 
     def ReadData(self, data_name: str, idt: int = -1) -> np.ndarray:
-        """Read data from a seissol file and may compute and return a derived quantity
+        """Read data from a SeisSol file and may compute and return a derived quantity.
 
         Args:
             data_name: Name of the data field to read.
-            idt: Time index to read data from. Defaults to -1, which reads from the last time step.
+            idt: Time index to read data from. Defaults to -1, which reads from the
+                last time step.
 
         Returns:
             Numpy array containing the read data.
 
         Notes:
-            If the data field is not available, this method may compute and return a derived quantity.
-            For example, if "SR" is not available, it will be computed as sqrt(SRs**2 + SRd**2).
-            Similarly, if "rake" is not available, it will be computed from Sls, Sld, and ASl.
+            If the data field is not available, this method may compute and return
+            a derived quantity. For example, if "SR" is not available, it will be
+            computed as sqrt(SRs**2 + SRd**2). Similarly, if "rake" is not available,
+            it will be computed from Sls, Sld, and ASl.
         """
         available_datasets = super().ReadAvailableDataFields()
         if data_name == "SR" and "SR" not in available_datasets:
@@ -108,7 +113,8 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
             Sls = super().ReadData("Sls", idt)
             Sld = super().ReadData("Sld", idt)
             ASl = super().ReadData("ASl", idt)
-            # seissol has a unusual convention positive Sls for right-lateral, hence the -
+            # seissol has a unusual convention
+            # positive Sls for right-lateral, hence the -
             rake = np.degrees(np.arctan2(Sld, -Sls))
             rake[ASl < 0.01] = np.nan
             if np.nanpercentile(np.abs(rake), 90) > 150:
@@ -165,7 +171,8 @@ def get_available_cmaps() -> dict:
     Get a dictionary of available colormaps for each library.
 
     Returns:
-    dict: A dictionary with library names as keys and lists of available colormaps as values.
+    dict: A dictionary with library names as keys and lists of
+    available colormaps as values.
     """
     avaiable_cmaps = {}
     avaiable_cmaps["matplotlib"] = plt.colormaps()
@@ -290,7 +297,7 @@ def parse_contour_args(args_contours: str) -> list:
 
     except ValueError:
         message = f"could not read args_contours:'{args_contours}', \nexample of \
-expected format:  'file_index=0 var=RT contour=grey,2,0,max,1 contour=black,4,0,max,5'\n\
+expected format: 'file_index=0 var=RT contour=grey,2,0,max,1 contour=black,4,0,max,5'\n\
 each contour entry follows the following pattern contour=color,thickness,min,max,dx"
         raise ValueError(message)
 
@@ -311,7 +318,7 @@ def add_contours(
     Args:
         plotter: A pyvista plotter object.
         grid: A vtk grid object.
-        sx: a seissolxdmfExtended object to read seissol data.
+        sx: A seissolxdmfExtended object to read seissol data.
         i: An integer, indexing the output file.
         idt: An integer, indexing the time snapshot.
         args_contours: A structured string containing contour parameters.
@@ -320,7 +327,8 @@ def add_contours(
         None
 
     Example:
-        args_contours = "file_index=0 var=RT contour=grey,2,0,max,1 contour=black,4,0,max,5"
+        args_contours =
+        "file_index=0 var=RT contour=grey,2,0,max,1 contour=black,4,0,max,5"
         add_contours(plotter, grid, 0, 1, args_contours)
     """
     contours_list = parse_contour_args(args_contours)
@@ -353,7 +361,8 @@ def add_contours(
             dxc = float(contour["dx"])
 
             print(
-                f"Generating contour for {varc}: np.arange({minc}, {maxc}, {dxc}), in {colorc} with line_width {thickc}"
+                f"Generating contour for {varc}: np.arange({minc}, {maxc}, {dxc}), "
+                f"in {colorc} with line_width {thickc}"
             )
             contours = mesh.contour(np.arange(minc, maxc, dxc), scalars=varc)
             plotter.add_mesh(contours, color=colorc, line_width=thickc)
@@ -365,7 +374,8 @@ def compute_plane_normal_surface(mesh):
 
 
 def compute_plane_normal(mesh):
-    """Computes the plane normal from a PyVista mesh, handling UnstructuredGrid without normals."""
+    """Computes the plane normal from a PyVista mesh, handling UnstructuredGrid
+    without normals."""
     # typically tandem output
     if isinstance(mesh, pv.MultiBlock):
         normals = []
@@ -390,7 +400,8 @@ def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> N
     Args:
         plotter: A PyVista plotter object.
         mesh: A PyVista mesh object.
-        view_arg: A string specifying the view, either a file path to a.pvcc file or a predefined view name (xy, xz, yz, normal, normal-flip).
+        view_arg: A string specifying the view, either a file path to a.pvcc file
+                  or a predefined view name (xy, xz, yz, normal, normal-flip).
 
     Returns:
         None
@@ -449,7 +460,6 @@ def format_time(t):
     Returns:
         str: Formatted time string.
     """
-
     years = int(t / (60.0 * 60.0 * 24.0 * 365.25))
     t -= years * 60.0 * 60.0 * 24.0 * 365.25
 
@@ -485,7 +495,8 @@ def validate_parameter_count(
 
     Parameters:
     parameter_list (list): List of parameters to be checked.
-    parameter_description (str): Description of the parameter type for error message formatting.
+    parameter_description (str): Description of the parameter type
+    for error message formatting.
     expected_number (int): The expected number of parameters.
 
     Raises:
@@ -494,7 +505,8 @@ def validate_parameter_count(
     n_param = len(parameter_list)
     if n_param != expected_number:
         raise ValueError(
-            f"{n_param} {parameter_description} given ({parameter_list}), but {expected_number} expected"
+            f"{n_param} {parameter_description} given ({parameter_list}), \
+            but {expected_number} expected"
         )
 
 
@@ -512,7 +524,7 @@ def main():
         "--annotate_time",
         nargs=1,
         metavar="color xr yr",
-        help="Display the time on the plot (xr and yr are relative location of the text)",
+        help="Display the time on the plot (xr and yr are relative location)",
     )
 
     parser.add_argument(
@@ -521,8 +533,8 @@ def main():
         nargs=1,
         metavar="color xr yr text",
         help=(
-            "Display custom annotation on the plot (xr and yr are relative location of the text)."
-            "for several annotations, use multiple 'color xr yr text' separated by ';'"
+            "Display custom annotation on the plot (xr and yr are relative locations)."
+            " For several annotations, use multiple 'color xr yr text', ';'-separated"
         ),
     )
 
@@ -591,7 +603,7 @@ def main():
     parser.add_argument(
         "--log_scale",
         nargs=1,
-        help="Log color scale. 1: log scale, 0: linear scale. n values separated by ';'",
+        help="Log color scale. 1: log scale, 0: linear scale. n values ';' separated",
     )
 
     parser.add_argument(
@@ -604,9 +616,9 @@ def main():
         "--output_prefix",
         nargs=1,
         help=(
-            "Specify output prefix of the snapshot",
-            "%d will be replaced by the time index",
-            "{t:.2f} will be replaced by the time_value in the given format specifier",
+            "Specify output prefix of the snapshot, "
+            "%d will be replaced by the time index, "
+            "{t:.2f} will be replaced by the time_value in the given format specifier"
         ),
     )
 
@@ -621,8 +633,8 @@ def main():
         "--slice",
         nargs=2,
         metavar=(
-            "1st argument: slice plane defined by point and normal"
-            "(x,y,z,nx,ny,nz), example 0 0 -2000 0 0 1"
+            "1st argument: slice plane defined by point and normal "
+            "(x,y,z,nx,ny,nz), example 0 0 -2000 0 0 1. "
             "2nd argument: 1 or 0 for enabling or not slicing on "
             "given input file separated by ';'."
         ),
@@ -634,11 +646,11 @@ def main():
         nargs=1,
         default=["i-1"],
         help=(
-            "Simulation time or steps to vizualize, separated by ';'. prepend a i for a"
-            " step, or a Python slice notation. E.g. 45.0;i2;i4:10:2;i-1 will extract a"
-            " snapshot at simulation time 45.0, the 2nd time step, and time steps 4,6, 8"
-            " and the last time step. If several files are vizualized simultaneously step"
-            " and pythonslices options based on the first file"
+            "Simulation time or steps to visualize, separated by ';'. prepend a i for "
+            "a step, or a Python slice notation. e.g. 45.0;i2;i4:10:2;i-1 will extract "
+            "a snapshot at simulation time 45.0, the 2nd time step, and time steps "
+            "4,6,8, and the last time step. If several files are visualized "
+            "simultaneously, step and Python slice options are based on the first file."
         ),
     )
 
@@ -648,13 +660,19 @@ def main():
         help="Variable(s) to visualize, separated by ';'",
         required=True,
     )
+    parser.add_argument(
+        "--version", action="version", version=f'{version("lightquakevisualizer")}'
+    )
 
     parser.add_argument(
         "--view",
         nargs=1,
         default=["normal"],
         metavar="pvcc_file_or_specific_view",
-        help="Setup the camera view: e.g. normal, normal-flip, xy, xz, yz or path to a pvcc_file",
+        help=(
+            "Setup the camera view: e.g. ",
+            "normal, normal-flip, xy, xz, yz or path to a pvcc_file",
+        ),
     )
 
     parser.add_argument(
@@ -896,7 +914,7 @@ def main():
 
             if not args.scalar_bar:
                 plotter.remove_scalar_bar()
-            is_surface = type(grid) == vtk.vtkPolyData
+            is_surface = grid is vtk.vtkPolyData
             if (
                 (not args.hide_boundary_edges)
                 and ("surface" not in fname)
