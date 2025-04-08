@@ -327,8 +327,8 @@ def add_contours(
         None
 
     Example:
-        args_contours = "file_index=0 var=RT contour=grey,2,0,max,1 contour=black,4,
-                         0,max,5"
+        args_contours =
+        "file_index=0 var=RT contour=grey,2,0,max,1 contour=black,4,0,max,5"
         add_contours(plotter, grid, 0, 1, args_contours)
     """
     contours_list = parse_contour_args(args_contours)
