@@ -88,7 +88,7 @@ class seissolxdmfExtended(seissolxdmf.seissolxdmf):
             SRs = super().ReadData("SRs", idt)
             SRd = super().ReadData("SRd", idt)
             return np.sqrt(SRs**2 + SRd**2)
-        if data_name == "Vr_kms" and "Vrkms" not in available_datasets:
+        if data_name == "Vr_kms" and "Vr_kms" not in available_datasets:
             return super().ReadData("Vr", idt) / 1e3
         if (
             data_name == "shear_stress_MPa"
