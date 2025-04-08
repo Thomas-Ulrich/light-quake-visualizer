@@ -12,7 +12,7 @@ description = "A collection of scripts to visualize SeisSol output using pyvista
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["pyvista", "SeisSol"]
-license = {text = "MIT"}
+license = "MIT"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",

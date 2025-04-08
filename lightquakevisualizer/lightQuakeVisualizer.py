@@ -11,6 +11,7 @@ import os
 import importlib
 import h5py
 from typing import List
+from importlib.metadata import version
 
 pv.global_theme.nan_color = "white"
 
@@ -647,6 +648,9 @@ def main():
         nargs=1,
         help="Variable(s) to visualize, separated by ';'",
         required=True,
+    )
+    parser.add_argument(
+        "--version", action="version", version=f'{version("lightquakevisualizer")}'
     )
 
     parser.add_argument(

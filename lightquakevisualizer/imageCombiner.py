@@ -2,6 +2,7 @@
 from PIL import Image
 import argparse
 import numpy as np
+from importlib.metadata import version
 
 
 def white_to_transparency(img: Image.Image) -> Image.Image:
@@ -18,10 +19,30 @@ def compute_j0(i: int, j: int, nrows: int, ncol_per_component: int) -> int:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="combine multiple images into a single image, with the ability to specify the number of columns and the relative offset (shift ratio) between images"
+        description=(
+            "Combine multiple images into a single image, "
+            "with the ability to specify the number of columns "
+            "and the relative offset (shift ratio) between images."
+        )
     )
     parser.add_argument(
         "--inputs", nargs="+", help="filenames to combine", required=True
+    )
+    parser.add_argument(
+        "--columns",
+        nargs=1,
+        default=([1]),
+        help="number of columns in figure",
+        type=int,
+    )
+    parser.add_argument(
+        "--keep_white",
+        dest="keep_white",
+        action="store_true",
+        help="do not change white to transparent",
+    )
+    parser.add_argument(
+        "--output", nargs=1, help="if not set will be args.filenames[0]", required=True
     )
     parser.add_argument(
         "--relative_offset",
@@ -32,22 +53,8 @@ def main():
     )
 
     parser.add_argument(
-        "--columns",
-        nargs=1,
-        default=([1]),
-        help="number of columns in figure",
-        type=int,
+        "--version", action="version", version=f'{version("lightquakevisualizer")}'
     )
-    parser.add_argument(
-        "--output", nargs=1, help="if not set will be args.filenames[0]", required=True
-    )
-    parser.add_argument(
-        "--keep_white",
-        dest="keep_white",
-        action="store_true",
-        help="do not change white to transparent",
-    )
-
     args = parser.parse_args()
     n_images = len(args.inputs)
     n_columns = args.columns[0]
