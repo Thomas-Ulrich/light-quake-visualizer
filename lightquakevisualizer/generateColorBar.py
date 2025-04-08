@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from matplotlib.colors import LinearSegmentedColormap, ListedColormap
+from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.colors as colors
 from matplotlib import colormaps
 from math import log10
@@ -173,9 +173,9 @@ def main():
         print("reverse works only with json color maps")
 
     if args.log:
-        img = plt.imshow(a, cmap=custom, norm=colors.LogNorm())
+        plt.imshow(a, cmap=custom, norm=colors.LogNorm())
     else:
-        img = plt.imshow(a, cmap=custom)
+        plt.imshow(a, cmap=custom)
 
     plt.gca().set_visible(False)
 
