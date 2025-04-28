@@ -661,7 +661,7 @@ def main():
     parser.add_argument(
         "--view",
         type=str,
-        default=["normal"],
+        default="normal",
         metavar="pvcc_file_or_specific_view",
         help=(
             "Setup the camera view: e.g. "
@@ -688,7 +688,6 @@ def main():
     parser.add_argument("--zoom", metavar="zoom", help="Camera zoom", type=float)
 
     args = parser.parse_args()
-    print(args)
 
     if not os.path.exists("output") and not args.interactive:
         os.makedirs("output")
@@ -905,7 +904,7 @@ def main():
 
             if not args.scalar_bar:
                 plotter.remove_scalar_bar()
-            is_surface = grid is vtk.vtkPolyData
+            is_surface = isinstance(grid, vtk.vtkPolyData)
             if (
                 (not args.hide_boundary_edges)
                 and ("surface" not in fname)
