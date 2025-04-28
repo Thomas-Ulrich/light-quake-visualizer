@@ -522,7 +522,7 @@ def main():
 
     parser.add_argument(
         "--annotate_time",
-        nargs=1,
+        type=str,
         metavar="color xr yr",
         help="Display the time on the plot (xr and yr are relative location)",
     )
@@ -530,7 +530,6 @@ def main():
     parser.add_argument(
         "--annotate_text",
         type=str,
-        nargs=1,
         metavar="color xr yr text",
         help=(
             "Display custom annotation on the plot (xr and yr are relative locations)."
@@ -540,14 +539,13 @@ def main():
 
     parser.add_argument(
         "--color_ranges",
-        nargs=1,
+        type=str,
         help="Color range for each file, separated by ';'",
     )
 
     parser.add_argument(
         "--contours",
         type=str,
-        nargs=1,
         help=(
             "Contour configuration in a structured format. Example:\n"
             "'file_index=0 var=RT contour=grey,2,0,max,1 contour=black,4,0,max,5'\n\n"
@@ -564,22 +562,20 @@ def main():
     )
 
     parser.add_argument(
-        "--cmap", nargs=1, help="cmap for each file, separated by ';'", required=True
+        "--cmap", type=str, help="cmap for each file, separated by ';'", required=True
     )
 
     parser.add_argument(
         "--font_size",
-        nargs=1,
         metavar="fs",
         help="Font-size of VTK objects",
         type=int,
-        default=([20]),
+        default=20,
     )
 
     parser.add_argument(
         "--hide_boundary_edges",
         dest="hide_boundary_edges",
-        default=False,
         action="store_true",
         help="Hide boundary edges",
     )
@@ -597,34 +593,33 @@ def main():
         metavar=("specular", "diffuse", "ambient"),
         help="Lighting parameters",
         type=float,
-        default=([0.1, 0.8, 0.5]),
+        default=[0.1, 0.8, 0.5],
     )
 
     parser.add_argument(
         "--log_scale",
-        nargs=1,
         help="Log color scale. 1: log scale, 0: linear scale. n values ';' separated",
     )
 
     parser.add_argument(
         "--opacity",
-        nargs=1,
+        type=str,
         help="Opacity values, separated by ';'",
     )
 
     parser.add_argument(
         "--output_prefix",
-        nargs=1,
+        type=str,
         help=(
             "Specify output prefix of the snapshot, "
-            "%d will be replaced by the time index, "
+            "%%d will be replaced by the time index, "
             "{t:.2f} will be replaced by the time_value in the given format specifier"
         ),
     )
 
     parser.add_argument(
         "--scalar_bar",
-        nargs=1,
+        type=str,
         metavar="xr yr (height_pxl)",
         help="Show scalar bar",
     )
@@ -643,8 +638,8 @@ def main():
 
     parser.add_argument(
         "--time",
-        nargs=1,
-        default=["i-1"],
+        default="i-1",
+        type=str,
         help=(
             "Simulation time or steps to visualize, separated by ';'. prepend a i for "
             "a step, or a Python slice notation. e.g. 45.0;i2;i4:10:2;i-1 will extract "
@@ -653,10 +648,9 @@ def main():
             "simultaneously, step and Python slice options are based on the first file."
         ),
     )
-
     parser.add_argument(
         "--variables",
-        nargs=1,
+        type=str,
         help="Variable(s) to visualize, separated by ';'",
         required=True,
     )
@@ -666,18 +660,18 @@ def main():
 
     parser.add_argument(
         "--view",
-        nargs=1,
+        type=str,
         default=["normal"],
         metavar="pvcc_file_or_specific_view",
         help=(
-            "Setup the camera view: e.g. ",
-            "normal, normal-flip, xy, xz, yz or path to a pvcc_file",
+            "Setup the camera view: e.g. "
+            "normal, normal-flip, xy, xz, yz or path to a pvcc_file"
         ),
     )
 
     parser.add_argument(
         "--vtk_meshes",
-        nargs=1,
+        type=str,
         metavar="fname color linewidth",
         help="Plot VTK meshes (e.g. coastline), group of 3 arguments separated by ';'",
     )
@@ -686,16 +680,15 @@ def main():
         "--window_size",
         nargs=2,
         metavar=("width", "height"),
-        default=([1200, 900]),
+        default=[1200, 900],
         help="Size of the window, in pixels",
         type=int,
     )
 
-    parser.add_argument(
-        "--zoom", nargs=1, metavar="zoom", help="Camera zoom", type=float
-    )
+    parser.add_argument("--zoom", metavar="zoom", help="Camera zoom", type=float)
 
     args = parser.parse_args()
+    print(args)
 
     if not os.path.exists("output") and not args.interactive:
         os.makedirs("output")
@@ -703,28 +696,26 @@ def main():
     fnames = args.input_files.split(";")
     nfiles = len(fnames)
 
-    variables = args.variables[0].split(";")
+    variables = args.variables.split(";")
     validate_parameter_count(variables, "variables", nfiles)
 
-    cmap_names = args.cmap[0].split(";")
+    cmap_names = args.cmap.split(";")
     validate_parameter_count(cmap_names, "cmaps", nfiles)
 
     use_log_scale = (
-        [True if int(v) else False for v in args.log_scale[0].split(";")]
+        [True if int(v) else False for v in args.log_scale.split(";")]
         if args.log_scale
         else np.zeros(nfiles, dtype=bool)
     )
     validate_parameter_count(use_log_scale, "parameters in args.log_scale", nfiles)
 
     opacity = (
-        [float(v) for v in args.opacity[0].split(";")]
-        if args.opacity
-        else np.ones(nfiles)
+        [float(v) for v in args.opacity.split(";")] if args.opacity else np.ones(nfiles)
     )
     validate_parameter_count(opacity, "parameters in args.opacity", nfiles)
 
     def gen_color_range(scolor_ranges):
-        color_ranges_pairs = scolor_ranges[0].split(";")
+        color_ranges_pairs = scolor_ranges.split(";")
         color_ranges = []
         for cr_pairs in color_ranges_pairs:
             clim = [float(v) for v in cr_pairs.split()]
@@ -744,14 +735,14 @@ def main():
 
     def get_snapshot_fname(args, fname, itime, time_value):
         if args.output_prefix:
-            basename = args.output_prefix[0].replace("%d", f"_{itime}")
+            basename = args.output_prefix.replace("%d", f"_{itime}")
             if "{t" in basename:
                 basename = basename.format(t=float(time_value))
 
         else:
             mod_prefix = os.path.splitext(fname)[0].replace("/", "_")
-            svar = args.variables[0].replace(";", "_")
-            view_name, view_ext = os.path.splitext(os.path.basename(args.view[0]))
+            svar = args.variables.replace(";", "_")
+            view_name, view_ext = os.path.splitext(os.path.basename(args.view))
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
             basename = f"{mod_prefix}{spvcc}{svar}_{itime}"
@@ -759,7 +750,7 @@ def main():
 
     if fnames[0].endswith("xdmf"):
         sx = seissolxdmfExtended(fnames[0])
-        time_indices = sx.ComputeTimeIndices(args.time[0].split(";"))
+        time_indices = sx.ComputeTimeIndices(args.time.split(";"))
         output_times = sx.ReadTimes()
     elif fnames[0].endswith("hdf"):
         print("reading a hdf file, no time information available")
@@ -769,7 +760,7 @@ def main():
     elif fnames[0].endswith("pvd"):
         reader = pv.PVDReader(fnames[0])
         output_times = np.array(reader.time_values)
-        time_indices = compute_time_indices(output_times, args.time[0].split(";"))
+        time_indices = compute_time_indices(output_times, args.time.split(";"))
     else:
         raise NotImplementedError("only supported files are pvd, xdmf and hdf")
     filtered_list = []
@@ -854,7 +845,7 @@ def main():
             clim_dic = color_ranges[i] if args.color_ranges else {"clim": None}
 
             if args.scalar_bar:
-                sb_args = args.scalar_bar[0].split()
+                sb_args = args.scalar_bar.split()
                 height_pxl = int(sb_args[2]) if len(sb_args) == 3 else 150
                 xr, yr = [float(v) for v in sb_args[0:2]]
                 height = height_pxl / args.window_size[1]
@@ -888,8 +879,8 @@ def main():
                     vertical=True,
                     position_x=xr,
                     position_y=yr,
-                    label_font_size=int(1.8 * args.font_size[0]),
-                    title_font_size=int(1.8 * args.font_size[0]),
+                    label_font_size=int(1.8 * args.font_size),
+                    title_font_size=int(1.8 * args.font_size),
                     n_labels=3,
                     fmt="%.1e" if use_log_scale[i] else "%g",
                     title=get_scalar_bar_title(var),
@@ -910,7 +901,7 @@ def main():
             )
 
             if args.contours:
-                add_contours(plotter, grid, sx, i, idx[0], args.contours[0])
+                add_contours(plotter, grid, sx, i, idx[0], args.contours)
 
             if not args.scalar_bar:
                 plotter.remove_scalar_bar()
@@ -930,18 +921,18 @@ def main():
                     plotter.add_mesh(edges, color="k", line_width=2)
 
         if args.vtk_meshes:
-            list_vtk_mesh_args = args.vtk_meshes[0].split(";")
+            list_vtk_mesh_args = args.vtk_meshes.split(";")
             for vtk_mesh_args in list_vtk_mesh_args:
                 fname, color, line_width = vtk_mesh_args.split()
                 vtk_mesh = pv.read(fname)
                 plotter.add_mesh(vtk_mesh, color=color, line_width=int(line_width))
-        configure_camera(plotter, mesh, args.view[0])
+        configure_camera(plotter, mesh, args.view)
 
         if args.zoom:
-            plotter.camera.zoom(args.zoom[0])
+            plotter.camera.zoom(args.zoom)
 
         if args.annotate_time:
-            colname, xr, yr = args.annotate_time[0].split()
+            colname, xr, yr = args.annotate_time.split()
             x1 = float(xr) * args.window_size[0]
             y1 = float(yr) * args.window_size[1]
 
@@ -949,11 +940,11 @@ def main():
                 f"{mytime:.1f}s",
                 position=(x1, y1),
                 color=colname,
-                font_size=args.font_size[0],
+                font_size=args.font_size,
             )
 
         if args.annotate_text:
-            annot_str = args.annotate_text[0].split(";")
+            annot_str = args.annotate_text.split(";")
             for params in annot_str:
                 parts = params.split(" ", 3)
                 assert (
@@ -973,7 +964,7 @@ def main():
                     text_part,
                     position=(x1, y1),
                     color=colname,
-                    font_size=args.font_size[0],
+                    font_size=args.font_size,
                 )
 
         if args.interactive:
