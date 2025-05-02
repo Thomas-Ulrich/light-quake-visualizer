@@ -744,8 +744,8 @@ def main():
             view_name, view_ext = os.path.splitext(os.path.basename(args.view))
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
-            basename = f"{mod_prefix}{spvcc}{svar}_{time}"
-        return f"{basename}.png"
+            basename = f"{mod_prefix}{spvcc}{svar}_{itime}"
+        return f"output/{basename}.png"
 
     if fnames[0].endswith("xdmf"):
         sx = seissolxdmfExtended(fnames[0])
