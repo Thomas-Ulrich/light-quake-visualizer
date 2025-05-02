@@ -618,6 +618,13 @@ def main():
     )
 
     parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="output",
+        help="Directory to save output images (default: 'output')"
+    )
+
+    parser.add_argument(
         "--scalar_bar",
         type=str,
         metavar="xr yr (height_pxl)",
@@ -737,7 +744,6 @@ def main():
             basename = args.output_prefix.replace("%d", f"_{itime}")
             if "{t" in basename:
                 basename = basename.format(t=float(time_value))
-
         else:
             mod_prefix = os.path.splitext(fname)[0].replace("/", "_")
             svar = args.variables.replace(";", "_")
@@ -745,7 +751,10 @@ def main():
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
             basename = f"{mod_prefix}{spvcc}{svar}_{itime}"
-        return f"{basename}.png"
+        if args.output_dir:
+            return f"{args.output_dir}/{basename}.png"
+        else:
+            return f"output/{basename}.png"
 
     if fnames[0].endswith("xdmf"):
         sx = seissolxdmfExtended(fnames[0])
