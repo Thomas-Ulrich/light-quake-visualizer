@@ -696,8 +696,8 @@ def main():
 
     args = parser.parse_args()
 
-    if not os.path.exists("output") and not args.interactive:
-        os.makedirs("output")
+    if not args.interactive and args.output_dir:
+            os.makedirs(args.output_dir, exist_ok=True)
 
     fnames = args.input_files.split(";")
     nfiles = len(fnames)
@@ -751,10 +751,7 @@ def main():
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
             basename = f"{mod_prefix}{spvcc}{svar}_{itime}"
-        if args.output_dir:
-            return f"{args.output_dir}/{basename}.png"
-        else:
-            return f"output/{basename}.png"
+        return f"{args.output_dir}/{basename}.png"
 
     if fnames[0].endswith("xdmf"):
         sx = seissolxdmfExtended(fnames[0])
