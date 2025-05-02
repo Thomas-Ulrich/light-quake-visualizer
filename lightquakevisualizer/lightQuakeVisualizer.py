@@ -697,7 +697,7 @@ def main():
     args = parser.parse_args()
 
     if not args.interactive and args.output_dir:
-            os.makedirs(args.output_dir, exist_ok=True)
+        os.makedirs(args.output_dir, exist_ok=True)
 
     fnames = args.input_files.split(";")
     nfiles = len(fnames)
