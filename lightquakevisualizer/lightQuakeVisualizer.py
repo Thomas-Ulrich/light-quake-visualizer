@@ -621,7 +621,7 @@ def main():
         "--output_dir",
         type=str,
         default="output",
-        help="Directory to save output images (default: 'output')"
+        help="Directory to save output images (default: 'output')",
     )
 
     parser.add_argument(
