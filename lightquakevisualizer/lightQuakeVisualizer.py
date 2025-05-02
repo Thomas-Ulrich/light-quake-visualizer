@@ -745,7 +745,7 @@ def main():
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
             basename = f"{mod_prefix}{spvcc}{svar}_{itime}"
-        return f"output/{basename}.png"
+        return f"{basename}.png"
 
     if fnames[0].endswith("xdmf"):
         sx = seissolxdmfExtended(fnames[0])
