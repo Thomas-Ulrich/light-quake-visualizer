@@ -657,10 +657,12 @@ def main():
 
     parser.add_argument(
         "--spatial_filter",
-        nargs=1,
+        nargs=2,
         metavar=(
             "1st argument: bounding box filter (xmin xmax ymin ymax zmin zmax), "
             "use 'None' to omit a bound. Example: None 10 0 20 0 30. "
+            "2nd argument: 1 or 0 for enabling or disabling the spatial filter"
+            " (0 = off, 1 = on)."
         ),
         help="Apply spatial bounding box filter to mesh (optional bounds allowed).",
     )
@@ -870,30 +872,33 @@ def main():
                     assert mesh.n_points > 0
 
             if args.spatial_filter:
+                bounding_box_str, enabled_filters_str = args.spatial_filter
+                enabled_filters = [int(v) for v in enabled_filters_str.split(";")]
                 xmin, xmax, ymin, ymax, zmin, zmax = [
-                    float(v) if v != "None" else None
-                    for v in args.spatial_filter[0].split()
+                    float(v) if v != "None" else None for v in bounding_box_str.split()
                 ]
-                points = mesh.points
-                mask = np.ones(len(points), dtype=bool)
 
-                if xmin is not None:
-                    mask &= points[:, 0] >= xmin
-                if xmax is not None:
-                    mask &= points[:, 0] <= xmax
-                if ymin is not None:
-                    mask &= points[:, 1] >= ymin
-                if ymax is not None:
-                    mask &= points[:, 1] <= ymax
-                if zmin is not None:
-                    mask &= points[:, 2] >= zmin
-                if zmax is not None:
-                    mask &= points[:, 2] <= zmax
+                if i < len(enabled_filters) and enabled_filters[i]:
+                    points = mesh.points
+                    mask = np.ones(len(points), dtype=bool)
 
-                mesh = mesh.extract_points(
-                    mask, adjacent_cells=True, include_cells=True
-                )
-                assert mesh.n_points > 0
+                    if xmin is not None:
+                        mask &= points[:, 0] >= xmin
+                    if xmax is not None:
+                        mask &= points[:, 0] <= xmax
+                    if ymin is not None:
+                        mask &= points[:, 1] >= ymin
+                    if ymax is not None:
+                        mask &= points[:, 1] <= ymax
+                    if zmin is not None:
+                        mask &= points[:, 2] >= zmin
+                    if zmax is not None:
+                        mask &= points[:, 2] <= zmax
+
+                    mesh = mesh.extract_points(
+                        mask, adjacent_cells=True, include_cells=True
+                    )
+                    assert mesh.n_points > 0
 
             clim_dic = color_ranges[i] if args.color_ranges else {"clim": None}
 
