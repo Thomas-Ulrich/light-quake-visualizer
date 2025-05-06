@@ -233,28 +233,28 @@ def get_cmaps_objects(cmap_names: list, color_ranges: list) -> list:
     cmaps_objects = []
     available_cmaps = get_available_cmaps()
 
-    def insert_white(cmap, position='first', num_colors=256):
+    def insert_white(cmap, position="first", num_colors=256):
         white = np.array([1, 1, 1, 1])
         base_colors = cmap(np.linspace(0, 1, num_colors - 1))
-        if position == 'first':
+        if position == "first":
             colors = np.vstack((white, base_colors))
-        elif position == 'last':
+        elif position == "last":
             colors = np.vstack((base_colors, white))
         else:
             raise ValueError("Invalid position for white insertion")
         return mcolors.ListedColormap(colors, N=num_colors)
 
     for cmap_name, crange in zip(cmap_names, color_ranges):
-        vmin, vmax = crange['clim']
+        vmin, vmax = crange["clim"]
         use_white = cmap_name.endswith("0")
         cmap_base_name = cmap_name[:-1] if use_white else cmap_name
 
         white_pos = None
         if use_white:
             if vmax <= 0:
-                white_pos = 'last'
+                white_pos = "last"
             elif vmin >= 0:
-                white_pos = 'first'
+                white_pos = "first"
             # else: leave white_pos = None (don't insert white)
         found = False
         for cmaplib, names in available_cmaps.items():
@@ -654,10 +654,12 @@ def main():
 
     parser.add_argument(
         "--spatial_filter",
-        nargs=1,
+        nargs=2,
         metavar=(
             "1st argument: bounding box filter (xmin xmax ymin ymax zmin zmax), "
             "use 'None' to omit a bound. Example: None 10 0 20 0 30. "
+            "2nd argument: 1 or 0 for enabling or disabling the spatial filter"
+            " (0 = off, 1 = on)."
         ),
         help="Apply spatial bounding box filter to mesh (optional bounds allowed).",
     )
@@ -867,30 +869,33 @@ def main():
                     assert mesh.n_points > 0
 
             if args.spatial_filter:
+                bounding_box_str, enabled_filters_str = args.spatial_filter
+                enabled_filters = [int(v) for v in enabled_filters_str.split(";")]
                 xmin, xmax, ymin, ymax, zmin, zmax = [
-                    float(v) if v != "None" else None
-                    for v in args.spatial_filter[0].split()
+                    float(v) if v != "None" else None for v in bounding_box_str.split()
                 ]
-                points = mesh.points
-                mask = np.ones(len(points), dtype=bool)
 
-                if xmin is not None:
-                    mask &= points[:, 0] >= xmin
-                if xmax is not None:
-                    mask &= points[:, 0] <= xmax
-                if ymin is not None:
-                    mask &= points[:, 1] >= ymin
-                if ymax is not None:
-                    mask &= points[:, 1] <= ymax
-                if zmin is not None:
-                    mask &= points[:, 2] >= zmin
-                if zmax is not None:
-                    mask &= points[:, 2] <= zmax
+                if i < len(enabled_filters) and enabled_filters[i]:
+                    points = mesh.points
+                    mask = np.ones(len(points), dtype=bool)
 
-                mesh = mesh.extract_points(
-                    mask, adjacent_cells=True, include_cells=True
-                )
-                assert mesh.n_points > 0
+                    if xmin is not None:
+                        mask &= points[:, 0] >= xmin
+                    if xmax is not None:
+                        mask &= points[:, 0] <= xmax
+                    if ymin is not None:
+                        mask &= points[:, 1] >= ymin
+                    if ymax is not None:
+                        mask &= points[:, 1] <= ymax
+                    if zmin is not None:
+                        mask &= points[:, 2] >= zmin
+                    if zmax is not None:
+                        mask &= points[:, 2] <= zmax
+
+                    mesh = mesh.extract_points(
+                        mask, adjacent_cells=True, include_cells=True
+                    )
+                    assert mesh.n_points > 0
 
             clim_dic = color_ranges[i] if args.color_ranges else {"clim": None}
 
