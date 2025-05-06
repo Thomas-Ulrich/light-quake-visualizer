@@ -532,8 +532,11 @@ def main():
     parser.add_argument(
         "--annotate_time",
         type=str,
-        metavar="color xr yr",
-        help="Display the time on the plot (xr and yr are relative location)",
+        metavar="\"color xr yr [nd]\"",
+        help=(
+            "Display time on plot. Format: \"color xr yr [nd]\" — "
+            "color (text color), xr/yr (relative position), nd (decimals, default=1)."
+        ),
     )
 
     parser.add_argument(
@@ -982,12 +985,22 @@ def main():
             plotter.camera.zoom(args.zoom)
 
         if args.annotate_time:
-            colname, xr, yr = args.annotate_time.split()
-            x1 = float(xr) * args.window_size[0]
-            y1 = float(yr) * args.window_size[1]
+            parts = args.annotate_time.split()
+            if len(parts) < 3:
+                raise ValueError(
+                    "annotate_time requires at least 3 values: color, xr, yr."
+                )
+
+            colname = parts[0]
+            xr = float(parts[1])
+            yr = float(parts[2])
+            nd = int(parts[3]) if len(parts) > 3 else 1
+
+            x1 = xr * args.window_size[0]
+            y1 = yr * args.window_size[1]
 
             plotter.add_text(
-                f"{mytime:.1f}s",
+                f"{mytime:.{nd}f}s",
                 position=(x1, y1),
                 color=colname,
                 font_size=args.font_size,
