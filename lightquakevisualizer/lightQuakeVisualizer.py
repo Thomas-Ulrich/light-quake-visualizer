@@ -215,51 +215,60 @@ def get_cmap(cmap_name: str, cmap_lib: str) -> object:
         raise ValueError(f"unkown cmap_lib {cmap_lib}")
 
 
-def get_cmaps_objects(cmap_names: list) -> list:
+def get_cmaps_objects(cmap_names: list, color_ranges: list) -> list:
     """
     Get a list of colormap objects from a list of colormap names.
 
     Args:
-    cmap_names (list): A list of colormap names.
-    if a colormap is a know colormap with prepended 0
-    then the first color is changed to white
+        cmap_names (list): List of colormap names. If a name ends with '0',
+                           it indicates a special case for white insertion.
+        color_ranges (list): List of dicts with 'clim' key, each a [vmin, vmax] pair.
 
     Returns:
-    list: A list of colormap objects.
+        list: A list of colormap objects.
 
     Raises:
-    ValueError: If a colormap name is unknown.
+        ValueError: If a colormap name is unknown.
     """
     cmaps_objects = []
     available_cmaps = get_available_cmaps()
-    for cmap_name in cmap_names:
-        if cmap_name[-1] == "0":
-            change_to_white_first = True
-            cmap_name_no0 = cmap_name[0:-1]
+
+    def insert_white(cmap, position='first', num_colors=256):
+        white = np.array([1, 1, 1, 1])
+        base_colors = cmap(np.linspace(0, 1, num_colors - 1))
+        if position == 'first':
+            colors = np.vstack((white, base_colors))
+        elif position == 'last':
+            colors = np.vstack((base_colors, white))
         else:
-            change_to_white_first = False
-            cmap_name_no0 = cmap_name
+            raise ValueError("Invalid position for white insertion")
+        return mcolors.ListedColormap(colors, N=num_colors)
+
+    for cmap_name, crange in zip(cmap_names, color_ranges):
+        vmin, vmax = crange['clim']
+        use_white = cmap_name.endswith("0")
+        cmap_base_name = cmap_name[:-1] if use_white else cmap_name
+
+        white_pos = None
+        if use_white:
+            if vmax <= 0:
+                white_pos = 'last'
+            elif vmin >= 0:
+                white_pos = 'first'
+            # else: leave white_pos = None (don't insert white)
         found = False
-        for cmaplib in available_cmaps.keys():
-            if cmap_name_no0 in available_cmaps[cmaplib]:
+        for cmaplib, names in available_cmaps.items():
+            if cmap_base_name in names:
                 found = True
-                # print(f"{cmap_name_no0} found in {cmaplib}")
-                cmap = get_cmap(cmap_name_no0, cmaplib)
-                if change_to_white_first:
-                    num_colors = 256
-                    # Create a new colormap that starts with white
-                    white = np.array([1, 1, 1, 1])
-                    new_colors = np.vstack(
-                        (white, cmap(np.linspace(0, 1, num_colors - 1)))
-                    )
-                    # Create a new colormap object
-                    cmap = mcolors.ListedColormap(
-                        new_colors, name=cmap_name, N=num_colors
-                    )
+                cmap = get_cmap(cmap_base_name, cmaplib)
+                if white_pos:
+                    cmap = insert_white(cmap, position=white_pos)
                 cmaps_objects.append(cmap)
                 break
+
         if not found:
-            raise ValueError(f"unkown cmap: {cmap_name_no0}")
+            raise ValueError(f"Unknown colormap: {cmap_base_name}")
+
     return cmaps_objects
 
 
@@ -737,7 +746,7 @@ def main():
         color_ranges = gen_color_range(args.color_ranges)
     dic_window_size = {"window_size": args.window_size}
 
-    cmaps = get_cmaps_objects(cmap_names)
+    cmaps = get_cmaps_objects(cmap_names,color_ranges)
 
     def get_snapshot_fname(args, fname, itime, time_value):
         if args.output_prefix:
