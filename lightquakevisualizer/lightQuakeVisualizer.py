@@ -233,28 +233,28 @@ def get_cmaps_objects(cmap_names: list, color_ranges: list) -> list:
     cmaps_objects = []
     available_cmaps = get_available_cmaps()
 
-    def insert_white(cmap, position='first', num_colors=256):
+    def insert_white(cmap, position="first", num_colors=256):
         white = np.array([1, 1, 1, 1])
         base_colors = cmap(np.linspace(0, 1, num_colors - 1))
-        if position == 'first':
+        if position == "first":
             colors = np.vstack((white, base_colors))
-        elif position == 'last':
+        elif position == "last":
             colors = np.vstack((base_colors, white))
         else:
             raise ValueError("Invalid position for white insertion")
         return mcolors.ListedColormap(colors, N=num_colors)
 
     for cmap_name, crange in zip(cmap_names, color_ranges):
-        vmin, vmax = crange['clim']
+        vmin, vmax = crange["clim"]
         use_white = cmap_name.endswith("0")
         cmap_base_name = cmap_name[:-1] if use_white else cmap_name
 
         white_pos = None
         if use_white:
             if vmax <= 0:
-                white_pos = 'last'
+                white_pos = "last"
             elif vmin >= 0:
-                white_pos = 'first'
+                white_pos = "first"
             # else: leave white_pos = None (don't insert white)
         found = False
         for cmaplib, names in available_cmaps.items():
@@ -532,9 +532,9 @@ def main():
     parser.add_argument(
         "--annotate_time",
         type=str,
-        metavar="\"color xr yr [nd]\"",
+        metavar='"color xr yr [nd]"',
         help=(
-            "Display time on plot. Format: \"color xr yr [nd]\" — "
+            'Display time on plot. Format: "color xr yr [nd]" — '
             "color (text color), xr/yr (relative position), nd (decimals, default=1)."
         ),
     )
