@@ -653,6 +653,16 @@ def main():
     )
 
     parser.add_argument(
+        "--spatial_filter",
+        nargs=1,
+        metavar=(
+            "1st argument: bounding box filter (xmin xmax ymin ymax zmin zmax), "
+            "use 'None' to omit a bound. Example: None 10 0 20 0 30. "
+        ),
+        help="Apply spatial bounding box filter to mesh (optional bounds allowed).",
+    )
+
+    parser.add_argument(
         "--time",
         default="i-1",
         type=str,
@@ -746,7 +756,7 @@ def main():
         color_ranges = gen_color_range(args.color_ranges)
     dic_window_size = {"window_size": args.window_size}
 
-    cmaps = get_cmaps_objects(cmap_names,color_ranges)
+    cmaps = get_cmaps_objects(cmap_names, color_ranges)
 
     def get_snapshot_fname(args, fname, itime, time_value):
         if args.output_prefix:
@@ -855,6 +865,32 @@ def main():
                         generate_triangles=True,
                     )
                     assert mesh.n_points > 0
+
+            if args.spatial_filter:
+                xmin, xmax, ymin, ymax, zmin, zmax = [
+                    float(v) if v != "None" else None
+                    for v in args.spatial_filter[0].split()
+                ]
+                points = mesh.points
+                mask = np.ones(len(points), dtype=bool)
+
+                if xmin is not None:
+                    mask &= points[:, 0] >= xmin
+                if xmax is not None:
+                    mask &= points[:, 0] <= xmax
+                if ymin is not None:
+                    mask &= points[:, 1] >= ymin
+                if ymax is not None:
+                    mask &= points[:, 1] <= ymax
+                if zmin is not None:
+                    mask &= points[:, 2] >= zmin
+                if zmax is not None:
+                    mask &= points[:, 2] <= zmax
+
+                mesh = mesh.extract_points(
+                    mask, adjacent_cells=True, include_cells=True
+                )
+                assert mesh.n_points > 0
 
             clim_dic = color_ranges[i] if args.color_ranges else {"clim": None}
 
