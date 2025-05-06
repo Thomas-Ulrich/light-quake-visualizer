@@ -215,51 +215,60 @@ def get_cmap(cmap_name: str, cmap_lib: str) -> object:
         raise ValueError(f"unkown cmap_lib {cmap_lib}")
 
 
-def get_cmaps_objects(cmap_names: list) -> list:
+def get_cmaps_objects(cmap_names: list, color_ranges: list) -> list:
     """
     Get a list of colormap objects from a list of colormap names.
 
     Args:
-    cmap_names (list): A list of colormap names.
-    if a colormap is a know colormap with prepended 0
-    then the first color is changed to white
+        cmap_names (list): List of colormap names. If a name ends with '0',
+                           it indicates a special case for white insertion.
+        color_ranges (list): List of dicts with 'clim' key, each a [vmin, vmax] pair.
 
     Returns:
-    list: A list of colormap objects.
+        list: A list of colormap objects.
 
     Raises:
-    ValueError: If a colormap name is unknown.
+        ValueError: If a colormap name is unknown.
     """
     cmaps_objects = []
     available_cmaps = get_available_cmaps()
-    for cmap_name in cmap_names:
-        if cmap_name[-1] == "0":
-            change_to_white_first = True
-            cmap_name_no0 = cmap_name[0:-1]
+
+    def insert_white(cmap, position="first", num_colors=256):
+        white = np.array([1, 1, 1, 1])
+        base_colors = cmap(np.linspace(0, 1, num_colors - 1))
+        if position == "first":
+            colors = np.vstack((white, base_colors))
+        elif position == "last":
+            colors = np.vstack((base_colors, white))
         else:
-            change_to_white_first = False
-            cmap_name_no0 = cmap_name
+            raise ValueError("Invalid position for white insertion")
+        return mcolors.ListedColormap(colors, N=num_colors)
+
+    for cmap_name, crange in zip(cmap_names, color_ranges):
+        vmin, vmax = crange["clim"]
+        use_white = cmap_name.endswith("0")
+        cmap_base_name = cmap_name[:-1] if use_white else cmap_name
+
+        white_pos = None
+        if use_white:
+            if vmax <= 0:
+                white_pos = "last"
+            elif vmin >= 0:
+                white_pos = "first"
+            # else: leave white_pos = None (don't insert white)
         found = False
-        for cmaplib in available_cmaps.keys():
-            if cmap_name_no0 in available_cmaps[cmaplib]:
+        for cmaplib, names in available_cmaps.items():
+            if cmap_base_name in names:
                 found = True
-                # print(f"{cmap_name_no0} found in {cmaplib}")
-                cmap = get_cmap(cmap_name_no0, cmaplib)
-                if change_to_white_first:
-                    num_colors = 256
-                    # Create a new colormap that starts with white
-                    white = np.array([1, 1, 1, 1])
-                    new_colors = np.vstack(
-                        (white, cmap(np.linspace(0, 1, num_colors - 1)))
-                    )
-                    # Create a new colormap object
-                    cmap = mcolors.ListedColormap(
-                        new_colors, name=cmap_name, N=num_colors
-                    )
+                cmap = get_cmap(cmap_base_name, cmaplib)
+                if white_pos:
+                    cmap = insert_white(cmap, position=white_pos)
                 cmaps_objects.append(cmap)
                 break
+
         if not found:
-            raise ValueError(f"unkown cmap: {cmap_name_no0}")
+            raise ValueError(f"Unknown colormap: {cmap_base_name}")
+
     return cmaps_objects
 
 
@@ -618,6 +627,13 @@ def main():
     )
 
     parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="output",
+        help="Directory to save output images (default: 'output')",
+    )
+
+    parser.add_argument(
         "--scalar_bar",
         type=str,
         metavar="xr yr (height_pxl)",
@@ -634,6 +650,18 @@ def main():
             "given input file separated by ';'."
         ),
         help="slice outputs along plane",
+    )
+
+    parser.add_argument(
+        "--spatial_filter",
+        nargs=2,
+        metavar=(
+            "1st argument: bounding box filter (xmin xmax ymin ymax zmin zmax), "
+            "use 'None' to omit a bound. Example: None 10 0 20 0 30. "
+            "2nd argument: 1 or 0 for enabling or disabling the spatial filter"
+            " (0 = off, 1 = on)."
+        ),
+        help="Apply spatial bounding box filter to mesh (optional bounds allowed).",
     )
 
     parser.add_argument(
@@ -689,8 +717,8 @@ def main():
 
     args = parser.parse_args()
 
-    if not os.path.exists("output") and not args.interactive:
-        os.makedirs("output")
+    if not args.interactive and args.output_dir:
+        os.makedirs(args.output_dir, exist_ok=True)
 
     fnames = args.input_files.split(";")
     nfiles = len(fnames)
@@ -730,14 +758,13 @@ def main():
         color_ranges = gen_color_range(args.color_ranges)
     dic_window_size = {"window_size": args.window_size}
 
-    cmaps = get_cmaps_objects(cmap_names)
+    cmaps = get_cmaps_objects(cmap_names, color_ranges)
 
     def get_snapshot_fname(args, fname, itime, time_value):
         if args.output_prefix:
             basename = args.output_prefix.replace("%d", f"_{itime}")
             if "{t" in basename:
                 basename = basename.format(t=float(time_value))
-
         else:
             mod_prefix = os.path.splitext(fname)[0].replace("/", "_")
             svar = args.variables.replace(";", "_")
@@ -745,7 +772,7 @@ def main():
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
             basename = f"{mod_prefix}{spvcc}{svar}_{itime}"
-        return f"output/{basename}.png"
+        return f"{args.output_dir}/{basename}.png"
 
     if fnames[0].endswith("xdmf"):
         sx = seissolxdmfExtended(fnames[0])
@@ -838,6 +865,35 @@ def main():
                         normal=(nx, ny, nz),
                         origin=(px, py, pz),
                         generate_triangles=True,
+                    )
+                    assert mesh.n_points > 0
+
+            if args.spatial_filter:
+                bounding_box_str, enabled_filters_str = args.spatial_filter
+                enabled_filters = [int(v) for v in enabled_filters_str.split(";")]
+                xmin, xmax, ymin, ymax, zmin, zmax = [
+                    float(v) if v != "None" else None for v in bounding_box_str.split()
+                ]
+
+                if i < len(enabled_filters) and enabled_filters[i]:
+                    points = mesh.points
+                    mask = np.ones(len(points), dtype=bool)
+
+                    if xmin is not None:
+                        mask &= points[:, 0] >= xmin
+                    if xmax is not None:
+                        mask &= points[:, 0] <= xmax
+                    if ymin is not None:
+                        mask &= points[:, 1] >= ymin
+                    if ymax is not None:
+                        mask &= points[:, 1] <= ymax
+                    if zmin is not None:
+                        mask &= points[:, 2] >= zmin
+                    if zmax is not None:
+                        mask &= points[:, 2] <= zmax
+
+                    mesh = mesh.extract_points(
+                        mask, adjacent_cells=True, include_cells=True
                     )
                     assert mesh.n_points > 0
 
