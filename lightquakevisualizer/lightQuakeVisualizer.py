@@ -12,6 +12,7 @@ import importlib
 import h5py
 from typing import List
 from importlib.metadata import version
+import warnings
 
 pv.global_theme.nan_color = "white"
 
@@ -525,6 +526,16 @@ def validate_parameter_count(
         )
 
 
+def check_deprecated_arguments(args):
+    if args.annotate_time:
+        warnings.warn(
+            "'--annotate_time' is deprecated and will be removed in future versions. "
+            "Please use e.g. '--annotate_text black xr yr {time:.1f}s' for equivalent "
+            "output.",
+            DeprecationWarning,
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Visualize SeisSol output using pyvista"
@@ -710,6 +721,7 @@ def main():
     parser.add_argument("--zoom", metavar="zoom", help="Camera zoom", type=float)
 
     args = parser.parse_args()
+    check_deprecated_arguments(args)
 
     if not os.path.exists("output") and not args.interactive:
         os.makedirs("output")
