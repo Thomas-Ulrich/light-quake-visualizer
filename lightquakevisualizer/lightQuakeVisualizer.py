@@ -13,6 +13,7 @@ import h5py
 from typing import List
 from importlib.metadata import version
 import warnings
+from pathlib import Path
 
 pv.global_theme.nan_color = "white"
 
@@ -451,7 +452,7 @@ def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> N
         plotter.camera.focal_point = fp
 
 
-def format_time(t):
+def format_long_time(t):
     """
     Converts time in seconds to "years y days d hours h minutes m seconds s" format.
 
@@ -641,12 +642,16 @@ def main():
     )
 
     parser.add_argument(
-        "--output_prefix",
+        "--output_prefix_path",
         type=str,
         help=(
             "Specify output prefix of the snapshot, "
-            "%%d will be replaced by the time index, "
-            "{t:.2f} will be replaced by the time_value in the given format specifier"
+            "this may include the output_dir, e.g. 'output_dir/prefix'"
+            "if it includes only the prefix, it will be written in the 'output' folder"
+            ". %%d will be replaced by the time index, "
+            "{time:.2f} will be replaced by the time_value in the given format "
+            " specifier, as well as {long_time} for a custom long duration format"
+            "(e.g. '3y_25d_45m_6.7s')."
         ),
     )
 
@@ -723,9 +728,6 @@ def main():
     args = parser.parse_args()
     check_deprecated_arguments(args)
 
-    if not os.path.exists("output") and not args.interactive:
-        os.makedirs("output")
-
     fnames = args.input_files.split(";")
     nfiles = len(fnames)
 
@@ -767,10 +769,21 @@ def main():
     cmaps = get_cmaps_objects(cmap_names)
 
     def get_snapshot_fname(args, fname, itime, time_value):
-        if args.output_prefix:
-            basename = args.output_prefix.replace("%d", f"_{itime}")
-            if "{t" in basename:
-                basename = basename.format(t=float(time_value))
+        if args.output_prefix_path:
+            allowed_vars = {
+                "time": float(time_value),
+                "long_time": format_long_time(float(time_value)).replace(" ", "_"),
+            }
+
+            output_name = args.output_prefix_path.replace("%d", f"_{itime}")
+            # replace placeholders like {time} or {long_time}
+            output_name = safe_format(output_name, allowed_vars)
+            p = Path(output_name)
+            if p.parent == Path("."):
+                output_name = f"output/{output_name}.png"
+            else:
+                p.parent.mkdir(parents=True, exist_ok=True)
+                output_name = f"{output_name}.png"
 
         else:
             mod_prefix = os.path.splitext(fname)[0].replace("/", "_")
@@ -778,8 +791,9 @@ def main():
             view_name, view_ext = os.path.splitext(os.path.basename(args.view))
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
-            basename = f"{mod_prefix}{spvcc}{svar}_{itime}"
-        return f"output/{basename}.png"
+            output_name = f"output/{mod_prefix}{spvcc}{svar}_{itime}.png"
+
+        return output_name
 
     if fnames[0].endswith("xdmf"):
         sx = seissolxdmfExtended(fnames[0])
@@ -977,7 +991,7 @@ def main():
             )
 
         if args.annotate_text:
-            allowed_vars = {"time": mytime, "long_time": format_time(mytime)}
+            allowed_vars = {"time": mytime, "long_time": format_long_time(mytime)}
 
             annot_str = args.annotate_text.split(";")
             for params in annot_str:
