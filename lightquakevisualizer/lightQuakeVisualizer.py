@@ -487,6 +487,21 @@ def format_time(t):
     return formatted_time
 
 
+def safe_format(template, allowed_vars):
+    """
+    Safely formats a template string by allowing only specified variables.
+
+    Args:
+        template (str): The format string.
+        allowed_vars (dict): A dictionary containing allowed variable names and their
+        values.
+
+    Returns:
+        str: The formatted string.
+    """
+    return template.format(**allowed_vars)
+
+
 def validate_parameter_count(
     parameter_list: List, parameter_description: str, expected_number: int
 ) -> None:
@@ -532,8 +547,15 @@ def main():
         type=str,
         metavar="color xr yr text",
         help=(
-            "Display custom annotation on the plot (xr and yr are relative locations)."
-            " For several annotations, use multiple 'color xr yr text', ';'-separated"
+            "Add custom text annotations to the plot at specified positions. "
+            "The format is 'color xr yr text', where 'xr' and 'yr' are relative "
+            "coordinates (from 0 to 1) and 'text' is the annotation text. "
+            "Multiple annotations can be specified by separating them with semicolons "
+            "(';'). You can also include formatted time values in the text, e.g.:\n"
+            "- '{time:.2f}' for simulation time in seconds (e.g. '12.34')\n"
+            "- '{long_time}' for a long-duration format (e.g. '3y 25d 45m 6.7s').\n"
+            "Example: '--annotate_text 'red 0.1 0.9 Simulation time: {time:.2f}s;"
+            "blue 0.1 0.85 Elapsed: {long_time}'"
         ),
     )
 
@@ -943,6 +965,8 @@ def main():
             )
 
         if args.annotate_text:
+            allowed_vars = {"time": mytime, "long_time": format_time(mytime)}
+
             annot_str = args.annotate_text.split(";")
             for params in annot_str:
                 parts = params.split(" ", 3)
@@ -954,10 +978,9 @@ def main():
                 y1 = float(yr) * args.window_size[1]
 
                 text_part = text_part.replace("\\n", "\n")
-                # add time if {t} in the text
-                if "{t" in text_part:
-                    formatted_time = format_time(mytime)
-                    text_part = text_part.format(t=formatted_time)
+
+                # Use safe_format to apply time formatting
+                text_part = safe_format(text_part, allowed_vars)
 
                 plotter.add_text(
                     text_part,

@@ -21,7 +21,7 @@ light_quake_visualizer --help
 Plot the volume output file at time 10s, variable u with a pvcc (saved from ParaView):
 
 ```
-light_quake_visualizer output_tpv5_ref/tpv5_sym.xdmf --var u --time 10.0 --cmap broc --view output_tpv5_ref/tpv5.pvcc  --scalar_bar "0.9 0.1" --color_range "-0.5 0.5" --zoom 1.0 --lighting 0.6 0.4 0.6
+light_quake_visualizer output_tpv5_ref/tpv5_sym.xdmf --var u --time 10.0 --cmap broc --view output_tpv5_ref/tpv5.pvcc  --scalar_bar "0.9 0.1" --color_range "-0.5 0.5" --zoom 1.0 --lighting 0.6 0.4 0.6  --annotate_text "black 0.1 0.9 {time:.1f}"
 ```
 
 ## Plotting several datasets
@@ -49,7 +49,7 @@ light_quake_visualizer  output_tpv5_new_format/tpv5_sym-wavefield-2.hdf --var u 
 ## Support for tandem fault output
 
 ```
-light_quake_visualizer --time "i::5" --var slip-rate --cmap turbo output/fault.pvd --view xz --log_scale 0 --scalar_bar "0.1 0.3" --annotate_text "black 0.1 0.9 {t}" --zoom 1.5 --color_range "1e-7 1e0"
+light_quake_visualizer --time "i::5" --var slip-rate --cmap turbo output/fault.pvd --view xz --log_scale 0 --scalar_bar "0.1 0.3" --annotate_text "black 0.1 0.9 {long_time}" --zoom 1.5 --color_range "1e-7 1e0"
 ```
 
 ## Generate vector graphic color bar image
