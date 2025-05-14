@@ -537,6 +537,49 @@ def check_deprecated_arguments(args):
         )
 
 
+def apply_bounding_box(mesh, bounds):
+    points = mesh.points
+    mask = np.ones(len(points), dtype=bool)
+
+    axes = [0, 0, 1, 1, 2, 2]  # x, x, y, y, z, z
+    ops = [np.greater_equal, np.less_equal] * 3
+
+    for bound, axis, op in zip(bounds, axes, ops):
+        if bound is not None:
+            mask &= op(points[:, axis], bound)
+
+    filtered = mesh.extract_points(mask, adjacent_cells=True, include_cells=True)
+    if filtered.n_points == 0:
+        raise ValueError("Spatial filter removed all points!")
+    return filtered
+
+
+def bounding_box_filter(mesh, i, bounding_box_filter_args):
+    bbox_str, enabled_str = bounding_box_filter_args
+    enabled_filters = [int(v) for v in enabled_str.split(";")]
+    bounds = [float(v) if v != "None" else None for v in bbox_str.split()]
+
+    assert (
+        len(bounds) == 6
+    ), "Bounding box must have 6 values (xmin xmax ymin ymax zmin zmax)."
+
+    if i >= len(enabled_filters) or not enabled_filters[i]:
+        return mesh
+
+    if isinstance(mesh, pv.MultiBlock):
+        filtered_blocks = []
+        for block in mesh:
+            if block is not None and hasattr(block, "points"):
+                try:
+                    filtered = apply_bounding_box(block, bounds)
+                    filtered_blocks.append(filtered)
+                except ValueError:
+                    pass  # skip empty filtered block
+        return pv.MultiBlock(filtered_blocks)
+    else:
+        return apply_bounding_box(mesh, bounds)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Visualize SeisSol output using pyvista"
@@ -672,6 +715,18 @@ def main():
             "given input file separated by ';'."
         ),
         help="slice outputs along plane",
+    )
+
+    parser.add_argument(
+        "--bounding_box_filter",
+        nargs=2,
+        metavar=("bounding_box", "enabled_flags"),
+        help=(
+            "Apply spatial bounding box filter to the meshes.\n"
+            "1st argument: bounding box (xmin xmax ymin ymax zmin zmax). Use 'None' to "
+            "skip a bound. Example: 'None 10 0 20 0 30'.\n"
+            "2nd argument: semicolon-separated list of 1 (enabled) or 0 (disabled)"
+        ),
     )
 
     parser.add_argument(
@@ -888,6 +943,8 @@ def main():
                         generate_triangles=True,
                     )
                     assert mesh.n_points > 0
+            if args.bounding_box_filter:
+                mesh = bounding_box_filter(mesh, i, args.bounding_box_filter)
 
             clim_dic = color_ranges[i] if args.color_ranges else {"clim": None}
 
