@@ -246,6 +246,9 @@ def get_cmaps_objects(cmap_names: list, color_ranges: list) -> list:
             raise ValueError("Invalid position for white insertion")
         return mcolors.ListedColormap(colors, N=num_colors)
 
+    if not color_ranges:
+        color_ranges = [{"clim": [0, 1]} for i in range(len(cmap_names))]
+
     for cmap_name, crange in zip(cmap_names, color_ranges):
         vmin, vmax = crange["clim"]
         use_white = cmap_name.endswith("0")
@@ -826,8 +829,9 @@ def main():
         "diffuse": args.lighting[1],
         "ambient": args.lighting[2],
     }
-    if args.color_ranges:
-        color_ranges = gen_color_range(args.color_ranges)
+
+    color_ranges = gen_color_range(args.color_ranges) if args.color_ranges else None
+
     dic_window_size = {"window_size": args.window_size}
 
     cmaps = get_cmaps_objects(cmap_names, color_ranges)
@@ -872,8 +876,11 @@ def main():
         reader = pv.PVDReader(fnames[0])
         output_times = np.array(reader.time_values)
         time_indices = compute_time_indices(output_times, args.time.split(";"))
+    elif fnames[0].endswith("vtk"):
+        output_times = [0]
+        time_indices = [0]
     else:
-        raise NotImplementedError("only supported files are pvd, xdmf and hdf")
+        raise NotImplementedError("only supported files are pvd, vtk, xdmf and hdf")
     filtered_list = []
     n_output_times = len(output_times)
     for x in time_indices:
@@ -935,8 +942,12 @@ def main():
                         block[var] = block.point_data[var]
                     elif var in block.cell_data:
                         block[var] = block.cell_data[var]
+            elif fname.endswith("vtk"):
+                grid = pv.read(fname)
             else:
-                raise NotImplementedError("only supported files are xdmf, hdf, and pvd")
+                raise NotImplementedError(
+                    "only supported files are vtk, xdmf, hdf, and pvd"
+                )
 
             mesh = pv.wrap(grid)
 
