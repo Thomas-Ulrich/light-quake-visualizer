@@ -12,6 +12,8 @@ import importlib
 import h5py
 from typing import List
 from importlib.metadata import version
+import warnings
+from pathlib import Path
 
 pv.global_theme.nan_color = "white"
 
@@ -215,51 +217,60 @@ def get_cmap(cmap_name: str, cmap_lib: str) -> object:
         raise ValueError(f"unkown cmap_lib {cmap_lib}")
 
 
-def get_cmaps_objects(cmap_names: list) -> list:
+def get_cmaps_objects(cmap_names: list, color_ranges: list) -> list:
     """
     Get a list of colormap objects from a list of colormap names.
 
     Args:
-    cmap_names (list): A list of colormap names.
-    if a colormap is a know colormap with prepended 0
-    then the first color is changed to white
+        cmap_names (list): List of colormap names. If a name ends with '0',
+                           it indicates a special case for white insertion.
+        color_ranges (list): List of dicts with 'clim' key, each a [vmin, vmax] pair.
 
     Returns:
-    list: A list of colormap objects.
+        list: A list of colormap objects.
 
     Raises:
-    ValueError: If a colormap name is unknown.
+        ValueError: If a colormap name is unknown.
     """
     cmaps_objects = []
     available_cmaps = get_available_cmaps()
-    for cmap_name in cmap_names:
-        if cmap_name[-1] == "0":
-            change_to_white_first = True
-            cmap_name_no0 = cmap_name[0:-1]
+
+    def insert_white(cmap, position="first", num_colors=256):
+        white = np.array([1, 1, 1, 1])
+        base_colors = cmap(np.linspace(0, 1, num_colors - 1))
+        if position == "first":
+            colors = np.vstack((white, base_colors))
+        elif position == "last":
+            colors = np.vstack((base_colors, white))
         else:
-            change_to_white_first = False
-            cmap_name_no0 = cmap_name
+            raise ValueError("Invalid position for white insertion")
+        return mcolors.ListedColormap(colors, N=num_colors)
+
+    for cmap_name, crange in zip(cmap_names, color_ranges):
+        vmin, vmax = crange["clim"]
+        use_white = cmap_name.endswith("0")
+        cmap_base_name = cmap_name[:-1] if use_white else cmap_name
+
+        white_pos = None
+        if use_white:
+            if vmax <= 0:
+                white_pos = "last"
+            elif vmin >= 0:
+                white_pos = "first"
+            # else: leave white_pos = None (don't insert white)
         found = False
-        for cmaplib in available_cmaps.keys():
-            if cmap_name_no0 in available_cmaps[cmaplib]:
+        for cmaplib, names in available_cmaps.items():
+            if cmap_base_name in names:
                 found = True
-                # print(f"{cmap_name_no0} found in {cmaplib}")
-                cmap = get_cmap(cmap_name_no0, cmaplib)
-                if change_to_white_first:
-                    num_colors = 256
-                    # Create a new colormap that starts with white
-                    white = np.array([1, 1, 1, 1])
-                    new_colors = np.vstack(
-                        (white, cmap(np.linspace(0, 1, num_colors - 1)))
-                    )
-                    # Create a new colormap object
-                    cmap = mcolors.ListedColormap(
-                        new_colors, name=cmap_name, N=num_colors
-                    )
+                cmap = get_cmap(cmap_base_name, cmaplib)
+                if white_pos:
+                    cmap = insert_white(cmap, position=white_pos)
                 cmaps_objects.append(cmap)
                 break
+
         if not found:
-            raise ValueError(f"unkown cmap: {cmap_name_no0}")
+            raise ValueError(f"Unknown colormap: {cmap_base_name}")
+
     return cmaps_objects
 
 
@@ -450,7 +461,7 @@ def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> N
         plotter.camera.focal_point = fp
 
 
-def format_time(t):
+def format_long_time(t):
     """
     Converts time in seconds to "years y days d hours h minutes m seconds s" format.
 
@@ -487,6 +498,21 @@ def format_time(t):
     return formatted_time
 
 
+def safe_format(template, allowed_vars):
+    """
+    Safely formats a template string by allowing only specified variables.
+
+    Args:
+        template (str): The format string.
+        allowed_vars (dict): A dictionary containing allowed variable names and their
+        values.
+
+    Returns:
+        str: The formatted string.
+    """
+    return template.format(**allowed_vars)
+
+
 def validate_parameter_count(
     parameter_list: List, parameter_description: str, expected_number: int
 ) -> None:
@@ -508,6 +534,59 @@ def validate_parameter_count(
             f"{n_param} {parameter_description} given ({parameter_list}), \
             but {expected_number} expected"
         )
+
+
+def check_deprecated_arguments(args):
+    if args.annotate_time:
+        warnings.warn(
+            "'--annotate_time' is deprecated and will be removed in future versions. "
+            "Please use e.g. '--annotate_text black xr yr {time:.1f}s' for equivalent "
+            "output.",
+            DeprecationWarning,
+        )
+
+
+def apply_bounding_box(mesh, bounds):
+    points = mesh.points
+    mask = np.ones(len(points), dtype=bool)
+
+    axes = [0, 0, 1, 1, 2, 2]  # x, x, y, y, z, z
+    ops = [np.greater_equal, np.less_equal] * 3
+
+    for bound, axis, op in zip(bounds, axes, ops):
+        if bound is not None:
+            mask &= op(points[:, axis], bound)
+
+    filtered = mesh.extract_points(mask, adjacent_cells=True, include_cells=True)
+    if filtered.n_points == 0:
+        raise ValueError("Spatial filter removed all points!")
+    return filtered
+
+
+def bounding_box_filter(mesh, i, bounding_box_filter_args):
+    bbox_str, enabled_str = bounding_box_filter_args
+    enabled_filters = [int(v) for v in enabled_str.split(";")]
+    bounds = [float(v) if v != "None" else None for v in bbox_str.split()]
+
+    assert (
+        len(bounds) == 6
+    ), "Bounding box must have 6 values (xmin xmax ymin ymax zmin zmax)."
+
+    if i >= len(enabled_filters) or not enabled_filters[i]:
+        return mesh
+
+    if isinstance(mesh, pv.MultiBlock):
+        filtered_blocks = []
+        for block in mesh:
+            if block is not None and hasattr(block, "points"):
+                try:
+                    filtered = apply_bounding_box(block, bounds)
+                    filtered_blocks.append(filtered)
+                except ValueError:
+                    pass  # skip empty filtered block
+        return pv.MultiBlock(filtered_blocks)
+    else:
+        return apply_bounding_box(mesh, bounds)
 
 
 def main():
@@ -532,8 +611,15 @@ def main():
         type=str,
         metavar="color xr yr text",
         help=(
-            "Display custom annotation on the plot (xr and yr are relative locations)."
-            " For several annotations, use multiple 'color xr yr text', ';'-separated"
+            "Add custom text annotations to the plot at specified positions. "
+            "The format is 'color xr yr text', where 'xr' and 'yr' are relative "
+            "coordinates (from 0 to 1) and 'text' is the annotation text. "
+            "Multiple annotations can be specified by separating them with semicolons "
+            "(';'). You can also include formatted time values in the text, e.g.:\n"
+            "- '{time:.2f}' for simulation time in seconds (e.g. '12.34')\n"
+            "- '{long_time}' for a long-duration format (e.g. '3y 25d 45m 6.7s').\n"
+            "Example: '--annotate_text 'red 0.1 0.9 Simulation time: {time:.2f}s;"
+            "blue 0.1 0.85 Elapsed: {long_time}'"
         ),
     )
 
@@ -608,12 +694,16 @@ def main():
     )
 
     parser.add_argument(
-        "--output_prefix",
+        "--output_prefix_path",
         type=str,
         help=(
             "Specify output prefix of the snapshot, "
-            "%%d will be replaced by the time index, "
-            "{t:.2f} will be replaced by the time_value in the given format specifier"
+            "this may include the output_dir, e.g. 'output_dir/prefix'"
+            "if it includes only the prefix, it will be written in the 'output' folder"
+            ". %%d will be replaced by the time index, "
+            "{time:.2f} will be replaced by the time_value in the given format "
+            " specifier, as well as {long_time} for a custom long duration format"
+            "(e.g. '3y_25d_45m_6.7s')."
         ),
     )
 
@@ -634,6 +724,18 @@ def main():
             "given input file separated by ';'."
         ),
         help="slice outputs along plane",
+    )
+
+    parser.add_argument(
+        "--bounding_box_filter",
+        nargs=2,
+        metavar=("bounding_box", "enabled_flags"),
+        help=(
+            "Apply spatial bounding box filter to the meshes.\n"
+            "1st argument: bounding box (xmin xmax ymin ymax zmin zmax). Use 'None' to "
+            "skip a bound. Example: 'None 10 0 20 0 30'.\n"
+            "2nd argument: semicolon-separated list of 1 (enabled) or 0 (disabled)"
+        ),
     )
 
     parser.add_argument(
@@ -688,9 +790,7 @@ def main():
     parser.add_argument("--zoom", metavar="zoom", help="Camera zoom", type=float)
 
     args = parser.parse_args()
-
-    if not os.path.exists("output") and not args.interactive:
-        os.makedirs("output")
+    check_deprecated_arguments(args)
 
     fnames = args.input_files.split(";")
     nfiles = len(fnames)
@@ -730,13 +830,24 @@ def main():
         color_ranges = gen_color_range(args.color_ranges)
     dic_window_size = {"window_size": args.window_size}
 
-    cmaps = get_cmaps_objects(cmap_names)
+    cmaps = get_cmaps_objects(cmap_names, color_ranges)
 
     def get_snapshot_fname(args, fname, itime, time_value):
-        if args.output_prefix:
-            basename = args.output_prefix.replace("%d", f"_{itime}")
-            if "{t" in basename:
-                basename = basename.format(t=float(time_value))
+        if args.output_prefix_path:
+            allowed_vars = {
+                "time": float(time_value),
+                "long_time": format_long_time(float(time_value)).replace(" ", "_"),
+            }
+
+            output_name = args.output_prefix_path.replace("%d", f"_{itime}")
+            # replace placeholders like {time} or {long_time}
+            output_name = safe_format(output_name, allowed_vars)
+            p = Path(output_name)
+            if p.parent == Path("."):
+                output_name = f"output/{output_name}.png"
+            else:
+                p.parent.mkdir(parents=True, exist_ok=True)
+                output_name = f"{output_name}.png"
 
         else:
             mod_prefix = os.path.splitext(fname)[0].replace("/", "_")
@@ -744,8 +855,9 @@ def main():
             view_name, view_ext = os.path.splitext(os.path.basename(args.view))
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
-            basename = f"{mod_prefix}{spvcc}{svar}_{itime}"
-        return f"output/{basename}.png"
+            output_name = f"output/{mod_prefix}{spvcc}{svar}_{itime}.png"
+
+        return output_name
 
     if fnames[0].endswith("xdmf"):
         sx = seissolxdmfExtended(fnames[0])
@@ -840,6 +952,8 @@ def main():
                         generate_triangles=True,
                     )
                     assert mesh.n_points > 0
+            if args.bounding_box_filter:
+                mesh = bounding_box_filter(mesh, i, args.bounding_box_filter)
 
             clim_dic = color_ranges[i] if args.color_ranges else {"clim": None}
 
@@ -943,6 +1057,8 @@ def main():
             )
 
         if args.annotate_text:
+            allowed_vars = {"time": mytime, "long_time": format_long_time(mytime)}
+
             annot_str = args.annotate_text.split(";")
             for params in annot_str:
                 parts = params.split(" ", 3)
@@ -954,10 +1070,9 @@ def main():
                 y1 = float(yr) * args.window_size[1]
 
                 text_part = text_part.replace("\\n", "\n")
-                # add time if {t} in the text
-                if "{t" in text_part:
-                    formatted_time = format_time(mytime)
-                    text_part = text_part.format(t=formatted_time)
+
+                # Use safe_format to apply time formatting
+                text_part = safe_format(text_part, allowed_vars)
 
                 plotter.add_text(
                     text_part,
