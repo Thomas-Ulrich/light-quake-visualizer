@@ -859,6 +859,7 @@ def main():
             view_name, view_ext = os.path.splitext(os.path.basename(args.view))
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
+            os.makedirs(output, exist_ok=True)
             output_name = f"output/{mod_prefix}{spvcc}{svar}_{itime}.png"
 
         return output_name
