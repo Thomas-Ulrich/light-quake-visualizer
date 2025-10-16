@@ -1,8 +1,8 @@
 # Light Quake Visualizer
 
 A collection of scripts for visualizing output from earthquake simulation software.
-Currently, it is designed to handle outputs from 
-[SeisSol](https://github.com/seissol/) and 
+Currently, it is designed to handle outputs from
+[SeisSol](https://github.com/seissol/) and
 [Tandem](https://github.com/TEAR-ERC/tandem).
 
 ## Features
@@ -22,7 +22,7 @@ light_quake_visualizer --help
 
 ## Simple Example
 
-The following command plots a volume output file at time 10s, variable `u`, 
+The following command plots a volume output file at time 10s, variable `u`,
 using a saved ParaView view (`tpv5.pvcc`):
 
 ```bash
@@ -113,7 +113,7 @@ light_quake_visualizer \
 
 ## Generate Vector Graphic Color Bars
 
-You can generate standalone vector graphic color bars using `generate_color_bar`.  
+You can generate standalone vector graphic color bars using `generate_color_bar`.
 An example usage is provided below:
 
 ```bash
@@ -122,7 +122,7 @@ generate_color_bar vik --crange -2 2 --labelfont 8 --height 1.2 3.6 --nticks 3
 
 ## Combining Snapshots with Partial Overlap
 
-You can combine multiple snapshots with adjustable overlap using `image_combiner`.  
+You can combine multiple snapshots with adjustable overlap using `image_combiner`.
 An example usage is provided below:
 
 ```bash
