@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 import argparse
+import importlib
+import os
+import warnings
+from importlib.metadata import version
+from pathlib import Path
+from typing import List
+
+import h5py
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
+import pyvista as pv
+import seissolxdmf
 import vtk
 from vtk.util import numpy_support
-import numpy as np
-import seissolxdmf
-import pyvista as pv
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import os
-import importlib
-import h5py
-from typing import List
-from importlib.metadata import version
-import warnings
-from pathlib import Path
 
 pv.global_theme.nan_color = "white"
 
@@ -730,6 +731,18 @@ def main():
     )
 
     parser.add_argument(
+        "--clip",
+        nargs=2,
+        metavar=(
+            "1st argument: clip plane defined by point and normal "
+            "(x,y,z,nx,ny,nz), example 0 0 -2000 0 0 1. "
+            "2nd argument: 1 or 0 for enabling or not slicing on "
+            "given input file separated by ';'."
+        ),
+        help="slice outputs along plane",
+    )
+
+    parser.add_argument(
         "--bounding_box_filter",
         nargs=2,
         metavar=("bounding_box", "enabled_flags"),
@@ -805,10 +818,11 @@ def main():
     validate_parameter_count(cmap_names, "cmaps", nfiles)
 
     use_log_scale = (
-        [True if int(v) else False for v in args.log_scale.split(";")]
+        [bool(int(v)) for v in args.log_scale.split(";")]
         if args.log_scale
-        else np.zeros(nfiles, dtype=bool)
+        else [False] * nfiles
     )
+
     validate_parameter_count(use_log_scale, "parameters in args.log_scale", nfiles)
 
     opacity = (
@@ -859,6 +873,7 @@ def main():
             view_name, view_ext = os.path.splitext(os.path.basename(args.view))
             is_pvcc = view_ext == ".pvcc"
             spvcc = f"_{view_name}_" if is_pvcc else ""
+            os.makedirs("output", exist_ok=True)
             output_name = f"output/{mod_prefix}{spvcc}{svar}_{itime}.png"
 
         return output_name
@@ -963,6 +978,19 @@ def main():
                         generate_triangles=True,
                     )
                     assert mesh.n_points > 0
+            if args.clip:
+                args_clip = [float(v) for v in args.clip[0].split()]
+                enabled_clip = [int(v) for v in args.clip[1].split(";")]
+                if enabled_clip[i]:
+                    assert len(args_clip) == 6
+                    px, py, pz, nx, ny, nz = args_clip
+                    mesh = mesh.clip(
+                        normal=(nx, ny, nz),
+                        origin=(px, py, pz),
+                        crinkle=True,
+                    )
+                    assert mesh.n_points > 0
+
             if args.bounding_box_filter:
                 mesh = bounding_box_filter(mesh, i, args.bounding_box_filter)
 
