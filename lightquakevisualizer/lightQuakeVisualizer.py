@@ -595,12 +595,18 @@ def bounding_box_filter(mesh, i, bounding_box_filter_args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Visualize SeisSol output using pyvista"
+        description=(
+            "A tool for visualizing output from earthquake simulation software, "
+            "including SeisSol and Tandem."
+        )
     )
 
     parser.add_argument(
         "input_files",
-        help="SeisSol XDMF filename(s) to visualize, separated by ';'",
+        help=(
+            "Input filename(s) to visualize, separated by ';'. "
+            "Currently supports SeisSol and Tandem output formats."
+        ),
     )
 
     parser.add_argument(

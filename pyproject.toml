@@ -8,7 +8,7 @@ version = "0.3.7"
 authors = [
     {name = "Thomas Ulrich"},
 ]
-description = "A collection of scripts to visualize SeisSol output using pyvista"
+description = "A collection of scripts for visualizing output from earthquake simulation software"
 readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["pyvista", "SeisSol"]
