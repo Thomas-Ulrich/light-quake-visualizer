@@ -1,24 +1,29 @@
 # Light Quake Visualizer
 
-A collection of scripts to visualize SeisSol output using PyVista.
+A collection of scripts for visualizing output from earthquake simulation software.
+Currently, it is designed to handle outputs from
+[SeisSol](https://github.com/seissol/) and
+[Tandem](https://github.com/TEAR-ERC/tandem).
 
 ## Features
 
-- Visualize SeisSol output files in XDMF and HDF-VTK formats
-- Support for multiple datasets and variables
-- Customizable color maps, color ranges, and scalar bar settings, lighting
-- Slicing options
-- And more...
+- Visualize SeisSol and Tandem output files in XDMF, HDF-VTK, and PVD formats
+- Support for plotting multiple datasets and variables simultaneously
+- Customizable color maps, color ranges, and scalar bar settings
+- Adjustable lighting and zoom for 3D visualization
+- Flexible slicing options
+- Contour plotting, e.g. for rupture time
 
-For more information on available options and their descriptions, run:
+For a full list of available options, run:
 
 ```bash
 light_quake_visualizer --help
 ```
 
-## A simple example of use
+## Simple Example
 
-Plot the volume output file at time 10s, variable u with a pvcc (saved from ParaView):
+The following command plots a volume output file at time 10s, variable `u`,
+using a saved ParaView view (`tpv5.pvcc`):
 
 ```bash
 light_quake_visualizer \
@@ -34,9 +39,9 @@ light_quake_visualizer \
   --annotate_text "black 0.1 0.9 {time:.1f}"
 ```
 
-## Plotting several datasets
+## Plotting Multiple Datasets
 
-Here sliced volume output (variable u), and (unsliced) fault output (variable ASl):
+Example showing a sliced volume output (`u`) and an unsliced fault output (`ASl`):
 
 ```bash
 light_quake_visualizer \
@@ -52,9 +57,9 @@ light_quake_visualizer \
   --slice "0 0 -2000 0 0 1" "1;0"
 ```
 
-## Plotting rupture time contour lines
+## Plotting Rupture Time Contours
 
-Here is an example of plotting fault slip (ASl) with rupture time (RT) contour lines
+Plot fault slip (`ASl`) with rupture time (`RT`) contour lines:
 
 ```bash
 light_quake_visualizer \
@@ -71,9 +76,9 @@ light_quake_visualizer \
   output_tpv5_ref/tpv5_sym.xdmf
 ```
 
-## Support for the new HDF-VTK
+## Support for the New VTKHDF Format
 
-Example usage with the new HDF-VTK format:
+Example usage with the new VTKHDF format:
 
 ```bash
 light_quake_visualizer \
@@ -88,7 +93,9 @@ light_quake_visualizer \
   --lighting 0.6 0.4 0.6
 ```
 
-## Support for tandem fault output
+## Tandem Fault Output Example
+
+Example usage for a 3D Tandem fault output:
 
 ```bash
 light_quake_visualizer \
@@ -104,17 +111,19 @@ light_quake_visualizer \
   --color_range "1e-7 1e0"
 ```
 
-## Generate vector graphic color bar image
+## Generate Vector Graphic Color Bars
 
-Example usage:
+You can generate standalone vector graphic color bars using `generate_color_bar`.
+An example usage is provided below:
 
 ```bash
 generate_color_bar vik --crange -2 2 --labelfont 8 --height 1.2 3.6 --nticks 3
 ```
 
-## Combining snapshots with possible overlap
+## Combining Snapshots with Partial Overlap
 
-Change the background to white, and combine several images with partial overlap:
+You can combine multiple snapshots with adjustable overlap using `image_combiner`.
+An example usage is provided below:
 
 ```bash
 image_combiner \
