@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lightquakevisualizer"
-version = "0.3.6"
+version = "0.3.7"
 authors = [
     {name = "Thomas Ulrich"},
 ]
@@ -27,4 +27,3 @@ Repository = "https://github.com/Thomas-Ulrich/light-quake-visualizer.git"
 light_quake_visualizer = "lightquakevisualizer.lightQuakeVisualizer:main"
 generate_color_bar = "lightquakevisualizer.generateColorBar:main"
 image_combiner = "lightquakevisualizer.imageCombiner:main"
-
