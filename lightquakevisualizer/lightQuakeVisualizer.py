@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 import argparse
+import importlib
+import os
+import warnings
+from importlib.metadata import version
+from pathlib import Path
+from typing import List
+
+import h5py
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
+import pyvista as pv
+import seissolxdmf
 import vtk
 from vtk.util import numpy_support
-import numpy as np
-import seissolxdmf
-import pyvista as pv
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-import os
-import importlib
-import h5py
-from typing import List
-from importlib.metadata import version
-import warnings
-from pathlib import Path
 
 pv.global_theme.nan_color = "white"
 
