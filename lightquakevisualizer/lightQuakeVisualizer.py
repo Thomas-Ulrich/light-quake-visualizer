@@ -818,10 +818,11 @@ def main():
     validate_parameter_count(cmap_names, "cmaps", nfiles)
 
     use_log_scale = (
-        [True if int(v) else False for v in args.log_scale.split(";")]
+        [bool(int(v)) for v in args.log_scale.split(";")]
         if args.log_scale
-        else np.zeros(nfiles, dtype=bool)
+        else [False] * nfiles
     )
+
     validate_parameter_count(use_log_scale, "parameters in args.log_scale", nfiles)
 
     opacity = (
