@@ -730,6 +730,18 @@ def main():
     )
 
     parser.add_argument(
+        "--clip",
+        nargs=2,
+        metavar=(
+            "1st argument: clip plane defined by point and normal "
+            "(x,y,z,nx,ny,nz), example 0 0 -2000 0 0 1. "
+            "2nd argument: 1 or 0 for enabling or not slicing on "
+            "given input file separated by ';'."
+        ),
+        help="slice outputs along plane",
+    )
+
+    parser.add_argument(
         "--bounding_box_filter",
         nargs=2,
         metavar=("bounding_box", "enabled_flags"),
@@ -964,6 +976,19 @@ def main():
                         generate_triangles=True,
                     )
                     assert mesh.n_points > 0
+            if args.clip:
+                args_clip = [float(v) for v in args.clip[0].split()]
+                enabled_clip = [int(v) for v in args.clip[1].split(";")]
+                if enabled_clip[i]:
+                    assert len(args_clip) == 6
+                    px, py, pz, nx, ny, nz = args_clip
+                    mesh = mesh.clip(
+                        normal=(nx, ny, nz),
+                        origin=(px, py, pz),
+                        crinkle=True,
+                    )
+                    assert mesh.n_points > 0
+
             if args.bounding_box_filter:
                 mesh = bounding_box_filter(mesh, i, args.bounding_box_filter)
 
