@@ -366,7 +366,9 @@ def add_contours(
 
         print("Using a threshold of 0.1 m for contour plots")
         mesh = mesh.threshold(value=(0.1, mesh["ASl"].max()), scalars="ASl")
-        mesh = mesh.cell_data_to_point_data([varc])
+
+        mesh.set_active_scalars(varc)
+        mesh = mesh.cell_data_to_point_data(pass_cell_data=False)
 
         for contour in entry["contours"]:
             colorc = contour["color"]
