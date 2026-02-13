@@ -80,9 +80,7 @@ def main():
     )
     parser.add_argument(
         "--extension",
-        nargs=1,
-        metavar=("ext"),
-        default=(["svg"]),
+        default="svg",
         help="extension of output file",
     )
     parser.add_argument(
@@ -101,9 +99,7 @@ def main():
     )
     parser.add_argument(
         "--labelfontsize",
-        nargs=1,
-        metavar=("labelfontsize"),
-        default=[25],
+        default=25,
         help="font size label",
         type=float,
     )
@@ -124,9 +120,7 @@ def main():
         help="number of ticks",
         type=int,
     )
-    parser.add_argument(
-        "--output", nargs=1, help="if not set will be ./", required=False
-    )
+    parser.add_argument("--output", help="if not set will be ./", required=False)
     parser.add_argument(
         "--reverse", dest="reverse", action="store_true", help="reverse color map"
     )
@@ -197,7 +191,7 @@ def main():
         )
     cb.ax.tick_params(
         which="major",
-        labelsize=args.labelfontsize[0],
+        labelsize=args.labelfontsize,
         length=10 * fact,
         width=2 * fact,
         direction="inout",
@@ -213,11 +207,11 @@ def main():
         args.crange[1] = log10(args.crange[1])
 
     if args.output:
-        output_folder = args.output[0]  # Use the provided output folder
+        output_folder = args.output  # Use the provided output folder
     else:
         output_folder = "."  # Use the current directory as default
 
-    fn = f"{output_folder}/colorbar{args.cmap}{args.crange[1]:.1f}.{args.extension[0]}"
+    fn = f"{output_folder}/colorbar{args.cmap}{args.crange[1]:.1f}.{args.extension}"
     plt.savefig(fn, transparent=True)
     print(f"done writing {fn}")
 
