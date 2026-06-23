@@ -798,7 +798,7 @@ def main():
         metavar="pvcc_file_or_specific_view",
         help=(
             "Setup the camera view: e.g. "
-            "normal, normal-flip, xy, xz, yz or path to a pvcc_file"
+            "normal, normal-flip, xy, xz, yz, nxy, nxz, nyz, or path to a pvcc_file"
         ),
     )
 
