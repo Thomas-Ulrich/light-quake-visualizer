@@ -366,7 +366,9 @@ def add_contours(
 
         print("Using a threshold of 0.1 m for contour plots")
         mesh = mesh.threshold(value=(0.1, mesh["ASl"].max()), scalars="ASl")
-        mesh = mesh.cell_data_to_point_data([varc])
+
+        mesh.set_active_scalars(varc)
+        mesh = mesh.cell_data_to_point_data(pass_cell_data=False)
 
         for contour in entry["contours"]:
             colorc = contour["color"]
@@ -440,6 +442,12 @@ def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> N
             plotter.view_xz()
         case "yz":
             plotter.view_yz()
+        case "nxy":
+            plotter.view_xy(negative=True)
+        case "nxz":
+            plotter.view_xz(negative=True)
+        case "nyz":
+            plotter.view_yz(negative=True)
         case "normal" | "normal-flip":
             center = mesh.center
             try:
@@ -598,7 +606,8 @@ def main():
         description=(
             "A tool for visualizing output from earthquake simulation software, "
             "including SeisSol and Tandem."
-        )
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     parser.add_argument(
@@ -789,7 +798,7 @@ def main():
         metavar="pvcc_file_or_specific_view",
         help=(
             "Setup the camera view: e.g. "
-            "normal, normal-flip, xy, xz, yz or path to a pvcc_file"
+            "normal, normal-flip, xy, xz, yz, nxy, nxz, nyz, or path to a pvcc_file"
         ),
     )
 
