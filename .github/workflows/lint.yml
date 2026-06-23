@@ -25,7 +25,7 @@ jobs:
           pip install black flake8
 
       - name: Run black check
-        run: black --check .
+        run: black --check --fast .
 
       - name: Run flake8
         run: flake8 .
