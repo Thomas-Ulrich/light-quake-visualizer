@@ -442,6 +442,12 @@ def configure_camera(plotter: pv.Plotter, mesh: pv.PolyData, view_arg: str) -> N
             plotter.view_xz()
         case "yz":
             plotter.view_yz()
+        case "nxy":
+            plotter.view_xy(negative=True)
+        case "nxz":
+            plotter.view_xz(negative=True)
+        case "nyz":
+            plotter.view_yz(negative=True)
         case "normal" | "normal-flip":
             center = mesh.center
             try:
@@ -600,7 +606,8 @@ def main():
         description=(
             "A tool for visualizing output from earthquake simulation software, "
             "including SeisSol and Tandem."
-        )
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 
     parser.add_argument(
