@@ -30,8 +30,7 @@ def main():
     )
     parser.add_argument(
         "--columns",
-        nargs=1,
-        default=([1]),
+        default=1,
         help="number of columns in figure",
         type=int,
     )
@@ -42,7 +41,7 @@ def main():
         help="do not change white to transparent",
     )
     parser.add_argument(
-        "--output", nargs=1, help="if not set will be args.filenames[0]", required=True
+        "--output", help="if not set will be args.filenames[0]", required=True
     )
     parser.add_argument(
         "--relative_offset",
@@ -57,7 +56,7 @@ def main():
     )
     args = parser.parse_args()
     n_images = len(args.inputs)
-    n_columns = args.columns[0]
+    n_columns = args.columns
     n_rows = int(np.ceil(n_images / n_columns))
 
     if not args.keep_white:
@@ -76,10 +75,10 @@ def main():
             args.relative_offset[0] * max(heights[k * n_columns : (k + 1) * n_columns])
         )
 
-    kargs = {"color": "White"} if args.keep_white else {}
+    kargs = {"color": "White"} if args.keep_white else {"color": (255, 255, 255, 0)}
     new_im = Image.new("RGBA", (width, height), **kargs)
 
-    nrows = int(np.ceil(len(images) / args.columns[0]))
+    nrows = int(np.ceil(len(images) / args.columns))
     offset = int(heights[-1] * args.relative_offset[0])
 
     for i, im in enumerate(images):
@@ -91,7 +90,7 @@ def main():
         )
         new_im = Image.alpha_composite(new_im, offseted_image)
 
-    fn = args.output[0]
+    fn = args.output
     new_im.save(fn)
     print(f"done writing {fn}")
 
