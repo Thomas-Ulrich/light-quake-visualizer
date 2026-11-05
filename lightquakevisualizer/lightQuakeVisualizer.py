@@ -898,10 +898,13 @@ def main():
         time_indices = sx.ComputeTimeIndices(args.time.split(";"))
         output_times = sx.ReadTimes()
     elif fnames[0].endswith("hdf"):
-        print("reading a hdf file, no time information available")
         with h5py.File(fnames[0], "r") as f:
-            output_times = f["VTKHDF/FieldData/Time"][()]
-        time_indices = [0]
+            if "Steps" in f["/VTKHDF"]:
+                output_times = f["VTKHDF/Steps/Values"][()]
+                time_indices = compute_time_indices(output_times, args.time.split(";"))
+            else:
+                output_times = f["VTKHDF/FieldData/Time"][()]
+                time_indices = [0]
     elif fnames[0].endswith("pvd"):
         reader = pv.PVDReader(fnames[0])
         output_times = np.array(reader.time_values)
@@ -918,10 +921,30 @@ def main():
             filtered_list.append(x)
         else:
             print(f"Warning: time index {x} removed as out of range.")
-    times = [output_times[k] for k in filtered_list]
+    times = [float(output_times[k]) for k in filtered_list]
     if not len(times):
         raise ValueError("all time index given are invalid")
     print(f"snapshots will be generated at times: {times}")
+
+    def vtkhdf_times(fname):
+        """Time values of a SeisSol VTKHDF file (transient or single step)."""
+        with h5py.File(fname, "r") as h5:
+            root = h5["/VTKHDF"]
+            if "Steps" in root and "Values" in root["Steps"]:
+                return np.asarray(root["Steps/Values"][...]).ravel().tolist()
+            if "FieldData" in root and "Time" in root["FieldData"]:
+                return np.asarray(root["FieldData/Time"][...]).ravel().tolist()
+        return [0.0]
+
+    def read_vtkhdf_at(fname, mytime, atol=1e-4):
+        times = vtkhdf_times(fname)
+        close = np.flatnonzero(np.isclose(times, float(mytime), atol=atol))
+        if close.size == 0:
+            return None
+        reader = pv.get_reader(fname)
+        if len(times) > 1:  # transient file (VTKHDF 2.0)
+            reader.reader.SetStep(int(close[0]))
+        return reader.read()
 
     def generate_snap(itime, mytime):
         plotter = pv.Plotter(off_screen=not args.interactive, **dic_window_size)
@@ -943,10 +966,10 @@ def main():
                 vtkArray.SetName(var)
                 grid.GetCellData().SetScalars(vtkArray)
             elif fname.endswith("hdf"):
-                reader = vtk.vtkHDFReader()
-                reader.SetFileName(fname)
-                reader.Update()
-                grid = reader.GetOutputDataObject(0)
+                grid = read_vtkhdf_at(fname, mytime)
+                if grid is None:
+                    print(f"no output at t={mytime}s found for {fname}, skipping...")
+                    continue
             elif fname.endswith("pvd"):
                 reader = pv.PVDReader(fname)
                 time_values = reader.time_values
