@@ -35,11 +35,15 @@ def compute_time_indices(output_times: list, at_times: list[str]) -> list[int]:
     time_indices = set()
     for at_time in at_times:
         if not at_time.startswith("i"):
+            target = float(at_time)
             close_indices = np.where(
-                np.isclose(output_times, float(at_time), atol=0.0001)
+                np.isclose(output_times, target, rtol=0, atol=0.0001)
             )[0]
             if close_indices.size > 0:
-                time_indices.add(close_indices[0])
+                best = close_indices[
+                    np.argmin(np.abs(output_times[close_indices] - target))
+                ]
+                time_indices.add(int(best))
             else:
                 print(f"Time {at_time} not found")
         else:
